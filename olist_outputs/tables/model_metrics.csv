@@ -1,0 +1,9 @@
+﻿,,ROC_AUC,PR_AUC,F1
+hai_long,LogReg,0.648,0.884,0.892
+hai_long,RandomForest,0.621,0.875,0.912
+hai_long,XGBoost,0.605,0.867,0.876
+hai_long,LightGBM,0.636,0.878,0.888
+mua_lai,LogReg,0.516,0.018,0.029
+mua_lai,RandomForest,0.539,0.018,0.0
+mua_lai,XGBoost,0.506,0.017,0.03
+mua_lai,LightGBM,0.515,0.016,0.026

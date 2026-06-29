@@ -1,0 +1,9 @@
+﻿id,giả thuyết,param,p_param,es_param_ten,es_param,nonparam,p_nonparam,es_nonparam_ten,es_nonparam,levene_p,p_holm,kết luận
+H1,Điểm đánh giá ~ nhóm sản phẩm,ANOVA,1.8044948278567693e-58,eta²,0.004139416225717516,Kruskal-Wallis,6.15805360783914e-66,epsilon²,0.004435107677915376,1.8044948278567693e-58,1.847416082351742e-65,Bác bỏ H0 (có ý nghĩa)
+H2,Giao trễ -> đánh giá thấp hơn,t-test (Welch),0.0,Cohen d,-1.467469406416029,Mann-Whitney,0.0,rank-biserial,0.6379947875847192,1.3672375103205297e-291,0.0,Bác bỏ H0 (có ý nghĩa)
+H3,Giao trễ ~ đánh giá thấp,Chi-square,0.0,Cramér's V,0.396527012884481,-,,-,,,0.0,Bác bỏ H0 (có ý nghĩa)
+H4,Thanh toán ~ mức hài lòng,Chi-square,0.013089976568975226,Cramér's V,0.007268897703991626,-,,-,,,0.013089976568975226,Bác bỏ H0 (có ý nghĩa)
+H5,Giá trị đơn ~ phương thức thanh toán,ANOVA,1.3806027962272287e-63,eta²,0.0030502900847880214,Kruskal-Wallis,4.038803934365941e-191,epsilon²,0.009123068201615866,1.744532371474325e-31,1.6155215737463763e-190,Bác bỏ H0 (có ý nghĩa)
+H6,Vùng miền ~ nhóm sản phẩm,Chi-square,4.2705282144351137e-196,Cramér's V,0.06813523697203297,-,,-,,,2.1352641072175568e-195,Bác bỏ H0 (có ý nghĩa)
+H7,Trả góp ~ giá trị đơn,Pearson,0.0,r,0.3199401363120993,Spearman,0.0,rho,0.38142475492831374,,0.0,Bác bỏ H0 (có ý nghĩa)
+H8,Khách mua lại ~ điểm đánh giá,t-test (Welch),0.7729690680164389,Cohen d,0.005081165444162068,Mann-Whitney,1.6827052959042922e-08,rank-biserial,0.05394022270560672,0.7248857245512885,3.3654105918085845e-08,Bác bỏ H0 (có ý nghĩa)
