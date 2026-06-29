@@ -64,8 +64,13 @@ Brazilian E-Commerce Public Dataset by Olist — [Kaggle](https://www.kaggle.com
 
 ## 👤 Tác giả
 **Trường Đại học Sư phạm Thành Phố Hồ Chí Minh**
+
 **Tăng Ngọc Phụng - KHMT836027** — Học viên cao học Khoa học máy tính (hướng ứng dụng) ·
+
 **Hoàng Châu Ngọc Phương - KHMT836028** — Học viên cao học Khoa học máy tính (hướng ứng dụng) ·
+
 **Lê Thị Mai Len - KHMT836015** — Học viên cao học Khoa học máy tính (hướng ứng dụng) ·
+
 **GVHD: ** TS. Nguyễn Tấn Trung
+
 Đồ án môn Phân tích dữ liệu.
