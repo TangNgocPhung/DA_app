@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.Python
+venv/
+env/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Dữ liệu & output nặng (tùy bạn, nếu muốn giữ thì xóa dòng này)
+outputs/data/*.parquet
+outputs/figures/*.png
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Notebook checkpoints
+.ipynb_checkpoints/
