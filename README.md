@@ -71,6 +71,6 @@ Brazilian E-Commerce Public Dataset by Olist — [Kaggle](https://www.kaggle.com
 
 **Lê Thị Mai Len - KHMT836015** — Học viên cao học Khoa học máy tính (hướng ứng dụng) ·
 
-**GVHD: ** TS. Nguyễn Tấn Trung
+**GVHD:** TS. Nguyễn Tấn Trung
 
 Đồ án môn Phân tích dữ liệu.
