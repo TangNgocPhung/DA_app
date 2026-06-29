@@ -10,9 +10,9 @@ env/
 # Streamlit
 .streamlit/secrets.toml
 
-# Dữ liệu & output nặng (tùy bạn, nếu muốn giữ thì xóa dòng này)
-outputs/data/*.parquet
-outputs/figures/*.png
+# Dữ liệu & biểu đồ: GIỮ trong repo để Streamlit Cloud deploy được.
+# Chỉ bỏ qua order_lines_view (~13MB, dashboard không dùng tới) cho repo nhẹ:
+outputs/data/order_lines_view.parquet
 
 # IDE / OS
 .vscode/
