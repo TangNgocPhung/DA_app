@@ -90,7 +90,8 @@ hr { margin: 0.8rem 0; border-color:#E5E9EF; }
 /* Thông tin nhóm ở sidebar */
 .credit { font-size:.82rem; color:#475569; line-height:1.5; }
 .credit .c-school { font-weight:700; color:#0F172A; }
-.credit .c-dept { color:#64748B; margin-bottom:6px; }
+.credit .c-dept { color:#64748B; }
+.credit .c-meta { color:#64748B; margin-top:6px; }
 .credit .c-role { font-weight:600; color:#059669; margin-top:10px; font-size:.72rem;
   text-transform:uppercase; letter-spacing:.03em; }
 .credit ol.c-list { margin:4px 0 0; padding-left:18px; }
@@ -365,6 +366,7 @@ thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật
 SIDEBAR_INFO = """<div class="credit">
 <div class="c-school">Trường Đại học Sư phạm<br>Thành phố Hồ Chí Minh</div>
 <div class="c-dept">Khoa Công nghệ thông tin</div>
+<div class="c-meta">Môn <b>Phân tích dữ liệu</b><br>Khóa 36 (2025–2027) · Năm học 2025–2026</div>
 <div class="c-role">Học viên thực hiện</div>
 <ol class="c-list">
 <li>Tăng Ngọc Phụng — KHMT836027</li>
