@@ -86,6 +86,16 @@ header[data-testid="stHeader"] { background: transparent; }
 section[data-testid="stSidebar"] { background:#FFFFFF; border-right:1px solid #E5E9EF; }
 .small-note { color:#94A3B8; font-size:.82rem; }
 hr { margin: 0.8rem 0; border-color:#E5E9EF; }
+
+/* Thông tin nhóm ở sidebar */
+.credit { font-size:.82rem; color:#475569; line-height:1.5; }
+.credit .c-school { font-weight:700; color:#0F172A; }
+.credit .c-dept { color:#64748B; margin-bottom:6px; }
+.credit .c-role { font-weight:600; color:#059669; margin-top:10px; font-size:.72rem;
+  text-transform:uppercase; letter-spacing:.03em; }
+.credit ol.c-list { margin:4px 0 0; padding-left:18px; }
+.credit ol.c-list li { margin:2px 0; }
+.credit .c-gv { font-weight:600; color:#0F172A; margin-top:2px; }
 </style>
 """
 
@@ -352,6 +362,19 @@ HERO = """<div class="topbar">
 thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</div></div>
 <div class="tb-meta">Bộ dữ liệu Olist · 2016–2018 · ~100K đơn</div></div>"""
 
+SIDEBAR_INFO = """<div class="credit">
+<div class="c-school">Trường Đại học Sư phạm<br>Thành phố Hồ Chí Minh</div>
+<div class="c-dept">Khoa Công nghệ thông tin</div>
+<div class="c-role">Học viên thực hiện</div>
+<ol class="c-list">
+<li>Tăng Ngọc Phụng — KHMT836027</li>
+<li>Hoàng Châu Ngọc Phương — KHMT836028</li>
+<li>Lê Thị Mai Len — KHMT836015</li>
+</ol>
+<div class="c-role">Giảng viên hướng dẫn</div>
+<div class="c-gv">TS. Nguyễn Tấn Trung</div>
+</div>"""
+
 
 def main():
     global FIG_DIR
@@ -366,30 +389,22 @@ def main():
         else:
             choice = st.radio("Điều hướng", labels, label_visibility="collapsed")
         st.markdown("---")
-        st.markdown("##### ⚙️ Nguồn dữ liệu")
-        detected = auto_root()
-        root = Path(st.text_input("Thư mục outputs",
-                    value=str(detected) if detected else "outputs",
-                    label_visibility="collapsed"))
-        FIG_DIR = root / "figures"
+        st.markdown(SIDEBAR_INFO, unsafe_allow_html=True)
+
+    detected = auto_root()
+    root = detected if detected else Path("outputs")
+    FIG_DIR = root / "figures"
 
     st.markdown(HERO, unsafe_allow_html=True)
 
     if not has_data(root):
         st.error(f"Không thấy dữ liệu parquet trong `{root/'data'}`.")
-        st.markdown("Nhập đúng đường dẫn thư mục `outputs` ở sidebar, hoặc chạy notebook "
-                    "phân tích để sinh dữ liệu. Đã thử:")
+        st.markdown("Chạy notebook phân tích để sinh thư mục `outputs/`, hoặc đặt biến "
+                    "môi trường `OLIST_OUTPUTS`. Đã thử các vị trí:")
         st.code("\n".join(str(p / "data") for p in candidate_roots()))
         return
 
     d = load_all(str(root / "data"))
-    n = sum(v is not None for v in d.values())
-    with st.sidebar:
-        st.success(f"✅ Đã nạp {n}/{len(ARTIFACTS)} bảng")
-        st.caption(f"Đang đọc: {root/'data'}")
-        st.markdown("---")
-        st.markdown("**Đồ án Phân tích dữ liệu**  \nĐH Sư phạm TP.HCM")
-
     fn = {n[0]: n[2] for n in NAV}[choice]
     fn(d)
 
