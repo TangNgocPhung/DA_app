@@ -51,39 +51,29 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .block-container { padding-top: 1.4rem; padding-bottom: 2rem; max-width: 1250px; }
 #MainMenu, footer { visibility: hidden; }
 header[data-testid="stHeader"] { background: transparent; }
-[data-testid="stAppViewContainer"] { background: #EEF3F6; }
-section[data-testid="stSidebar"] { background: #FFFFFF; }
+[data-testid="stAppViewContainer"] { background: #F1F5F9; }
 
-/* Hero */
-.hero {
-  background: linear-gradient(120deg, #059669 0%, #0F9E7A 45%, #0F766E 100%);
-  border-radius: 22px; padding: 30px 34px; color: #fff; margin-bottom: 22px;
-  box-shadow: 0 12px 30px rgba(5,150,105,.28);
-}
-.hero h1 { font-family:'Poppins',sans-serif; font-weight:800; font-size:2.05rem;
-  margin:0 0 6px 0; line-height:1.15; color:#fff; }
-.hero p { margin:0; font-size:1.02rem; opacity:.92; }
-.hero .tags { margin-top:14px; }
-.hero .tag { display:inline-block; background:rgba(255,255,255,.18); backdrop-filter:blur(4px);
-  border:1px solid rgba(255,255,255,.25); padding:4px 12px; border-radius:999px;
-  font-size:.78rem; margin-right:8px; font-weight:500; }
+/* Header bar (gọn, kiểu BI) */
+.topbar { background:#fff; border:1px solid #E5E9EF; border-left:5px solid #059669;
+  border-radius:12px; padding:18px 22px; margin-bottom:20px;
+  display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+.tb-title { font-size:1.3rem; font-weight:800; color:#0F172A; letter-spacing:-.01em; }
+.tb-sub { color:#64748B; font-size:.9rem; margin-top:5px; max-width:780px; line-height:1.45; }
+.tb-meta { color:#059669; font-size:.78rem; font-weight:600; background:#ECFDF5;
+  border:1px solid #A7F3D0; padding:6px 12px; border-radius:8px; white-space:nowrap; }
 
-/* KPI cards */
-.kpi { display:flex; align-items:center; gap:14px; background:#fff;
-  border:1px solid #EEF0F5; border-radius:18px; padding:16px 18px;
-  box-shadow:0 4px 16px rgba(30,33,48,.05); transition:transform .15s ease, box-shadow .15s ease; }
-.kpi:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(30,33,48,.10); }
-.kpi .ic { width:46px; height:46px; border-radius:13px; display:flex; align-items:center;
-  justify-content:center; font-size:22px; flex-shrink:0; }
-.kpi .val { font-family:'Poppins',sans-serif; font-weight:700; font-size:1.35rem;
-  color:#1E2130; line-height:1.1; white-space:nowrap; }
-.kpi .lab { font-size:.82rem; color:#8A90A2; font-weight:500; margin-top:2px; }
+/* KPI cards (phẳng, kiểu báo cáo) */
+.kpi { background:#fff; border:1px solid #E5E9EF; border-top:3px solid #059669;
+  border-radius:12px; padding:15px 18px; height:100%; }
+.kpi .lab { font-size:.72rem; font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:#94A3B8; }
+.kpi .val { font-weight:700; font-size:1.55rem; color:#0F172A; margin-top:6px;
+  line-height:1.1; white-space:nowrap; }
 
 /* Section heading */
-.sec { margin: 6px 0 2px 0; }
-.sec h3 { font-family:'Poppins',sans-serif; font-weight:700; font-size:1.28rem;
-  color:#1E2130; margin:0; }
-.sec p { color:#8A90A2; font-size:.9rem; margin:2px 0 0 0; }
+.sec { border-left:3px solid #059669; padding-left:12px; margin:10px 0 6px; }
+.sec h3 { font-weight:700; font-size:1.12rem; color:#0F172A; margin:0; }
+.sec p { color:#94A3B8; font-size:.86rem; margin:2px 0 0 0; }
 
 /* Tabs */
 .stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom:1px solid #EEF0F5; }
@@ -92,10 +82,10 @@ section[data-testid="stSidebar"] { background: #FFFFFF; }
 .stTabs [aria-selected="true"] { color:#059669 !important; background:#ECFDF5; }
 
 /* Cards for dataframes/plots */
-[data-testid="stDataFrame"] { border:1px solid #EEF0F5; border-radius:14px; }
-section[data-testid="stSidebar"] { background:#FAFAFE; border-right:1px solid #EEF0F5; }
-.small-note { color:#8A90A2; font-size:.82rem; }
-hr { margin: 0.8rem 0; border-color:#EEF0F5; }
+[data-testid="stDataFrame"] { border:1px solid #E5E9EF; border-radius:10px; }
+section[data-testid="stSidebar"] { background:#FFFFFF; border-right:1px solid #E5E9EF; }
+.small-note { color:#94A3B8; font-size:.82rem; }
+hr { margin: 0.8rem 0; border-color:#E5E9EF; }
 </style>
 """
 
@@ -151,8 +141,8 @@ def fmt_money(x) -> str:
 
 def kpi(col, icon, label, value, tint):
     col.markdown(
-        f"""<div class="kpi"><div class="ic" style="background:{tint}22;color:{tint}">{icon}</div>
-        <div><div class="val">{value}</div><div class="lab">{label}</div></div></div>""",
+        f'<div class="kpi" style="border-top-color:{tint}">'
+        f'<div class="lab">{label}</div><div class="val">{value}</div></div>',
         unsafe_allow_html=True)
 
 
@@ -356,13 +346,11 @@ MENU_STYLES = {
                           "font-weight": "700"},
 }
 
-HERO = """<div class="hero">
-<h1>🛒 Olist · Phân tích hành vi &amp; phân khúc khách hàng</h1>
-<p>Khai phá hành vi mua sắm và xây dựng chân dung khách hàng trên nền tảng
-thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</p>
-<div class="tags"><span class="tag">~100K đơn hàng</span>
-<span class="tag">RFM &amp; Segmentation</span><span class="tag">Machine Learning</span>
-<span class="tag">Deep Learning</span></div></div>"""
+HERO = """<div class="topbar">
+<div><div class="tb-title">Olist · Phân tích hành vi &amp; phân khúc khách hàng</div>
+<div class="tb-sub">Khai phá hành vi mua sắm và xây dựng chân dung khách hàng trên nền tảng
+thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</div></div>
+<div class="tb-meta">Bộ dữ liệu Olist · 2016–2018 · ~100K đơn</div></div>"""
 
 
 def main():
