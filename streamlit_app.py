@@ -26,10 +26,10 @@ ARTIFACTS = ["orders_view", "customers_view", "order_lines_view", "rfm_features"
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR: Path | None = None
 
-PRIMARY = "#6C5CE7"
-ACCENT = "#00B8A9"
-PALETTE = ["#6C5CE7", "#00B8A9", "#FF7675", "#FDCB6E", "#0984E3",
-           "#55EFC4", "#E17055", "#A29BFE"]
+PRIMARY = "#059669"
+ACCENT = "#0F766E"
+PALETTE = ["#059669", "#0F766E", "#10B981", "#F59E0B", "#0EA5E9",
+           "#34D399", "#EF4444", "#14B8A6"]
 
 st.set_page_config(page_title="Olist · Phân tích khách hàng",
                    page_icon="🛒", layout="wide", initial_sidebar_state="expanded")
@@ -48,9 +48,9 @@ header[data-testid="stHeader"] { background: transparent; }
 
 /* Hero */
 .hero {
-  background: linear-gradient(120deg, #6C5CE7 0%, #8E7BF0 45%, #00B8A9 100%);
+  background: linear-gradient(120deg, #059669 0%, #0F9E7A 45%, #0F766E 100%);
   border-radius: 22px; padding: 30px 34px; color: #fff; margin-bottom: 22px;
-  box-shadow: 0 12px 30px rgba(108,92,231,.28);
+  box-shadow: 0 12px 30px rgba(5,150,105,.28);
 }
 .hero h1 { font-family:'Poppins',sans-serif; font-weight:800; font-size:2.05rem;
   margin:0 0 6px 0; line-height:1.15; color:#fff; }
@@ -81,7 +81,7 @@ header[data-testid="stHeader"] { background: transparent; }
 .stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom:1px solid #EEF0F5; }
 .stTabs [data-baseweb="tab"] { font-weight:600; font-size:.95rem; padding:8px 16px;
   border-radius:10px 10px 0 0; }
-.stTabs [aria-selected="true"] { color:#6C5CE7 !important; background:#F3F1FE; }
+.stTabs [aria-selected="true"] { color:#059669 !important; background:#ECFDF5; }
 
 /* Cards for dataframes/plots */
 [data-testid="stDataFrame"] { border:1px solid #EEF0F5; border-radius:14px; }
@@ -182,11 +182,11 @@ def tab_overview(d):
     deliv = ov[ov["order_status"] == "delivered"]
     section("Bức tranh tổng quan", "Các chỉ số chính của toàn bộ giao dịch trên Olist")
     cols = st.columns(5)
-    kpi(cols[0], "💰", "Tổng doanh thu", fmt_money(deliv["order_value"].sum()), "#6C5CE7")
-    kpi(cols[1], "🧾", "Số đơn hàng", fmt_int(ov["order_id"].nunique()), "#00B8A9")
-    kpi(cols[2], "👥", "Số khách hàng", fmt_int(ov["customer_unique_id"].nunique()), "#0984E3")
-    kpi(cols[3], "⭐", "Đánh giá TB", f'{ov["review_score"].mean():.2f}', "#FDCB6E")
-    kpi(cols[4], "🔁", "Tỉ lệ mua lại", f'{cv["is_repeat_buyer"].mean():.1%}', "#FF7675")
+    kpi(cols[0], "💰", "Tổng doanh thu", fmt_money(deliv["order_value"].sum()), "#059669")
+    kpi(cols[1], "🧾", "Số đơn hàng", fmt_int(ov["order_id"].nunique()), "#0F766E")
+    kpi(cols[2], "👥", "Số khách hàng", fmt_int(ov["customer_unique_id"].nunique()), "#0EA5E9")
+    kpi(cols[3], "⭐", "Đánh giá TB", f'{ov["review_score"].mean():.2f}', "#F59E0B")
+    kpi(cols[4], "🔁", "Tỉ lệ mua lại", f'{cv["is_repeat_buyer"].mean():.1%}', "#EF4444")
 
     st.write("")
     c1, c2 = st.columns((3, 2))
@@ -196,7 +196,7 @@ def tab_overview(d):
              .groupby("month").agg(doanh_thu=("order_value", "sum")).reset_index())
         if HAS_PX:
             fig = px.area(m, x="month", y="doanh_thu", title="Doanh thu theo tháng")
-            fig.update_traces(line_color=PRIMARY, fillcolor="rgba(108,92,231,.12)")
+            fig.update_traces(line_color=PRIMARY, fillcolor="rgba(5,150,105,.12)")
             st.plotly_chart(style_fig(fig), use_container_width=True)
     with c2:
         top = (deliv.groupby("customer_state")["order_value"].sum()
@@ -204,7 +204,7 @@ def tab_overview(d):
         if HAS_PX:
             fig = px.bar(top, x="order_value", y="customer_state", orientation="h",
                          title="Top bang theo doanh thu", color="order_value",
-                         color_continuous_scale=["#D6D0FA", PRIMARY])
+                         color_continuous_scale=["#D1FAE5", PRIMARY])
             fig.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed"))
             st.plotly_chart(style_fig(fig), use_container_width=True)
 
@@ -285,7 +285,7 @@ def tab_assoc(d):
         fig = px.scatter(f, x="support", y="confidence", size="lift", color="lift",
                          hover_data=["antecedents", "consequents"],
                          title="Support – Confidence – Lift",
-                         color_continuous_scale=["#D6D0FA", PRIMARY])
+                         color_continuous_scale=["#D1FAE5", PRIMARY])
         st.plotly_chart(style_fig(fig), use_container_width=True)
 
 
@@ -317,10 +317,10 @@ def tab_lookup(d):
         else:
             r = row.iloc[0]
             cols = st.columns(4)
-            kpi(cols[0], "🕒", "Recency (ngày)", fmt_int(r.get("recency_days", 0)), "#6C5CE7")
-            kpi(cols[1], "🔁", "Frequency", fmt_int(r.get("frequency", 0)), "#00B8A9")
-            kpi(cols[2], "💰", "Monetary", fmt_money(r.get("monetary", 0)), "#0984E3")
-            kpi(cols[3], "⭐", "Đánh giá TB", f'{r.get("avg_review_score", float("nan")):.1f}', "#FDCB6E")
+            kpi(cols[0], "🕒", "Recency (ngày)", fmt_int(r.get("recency_days", 0)), "#059669")
+            kpi(cols[1], "🔁", "Frequency", fmt_int(r.get("frequency", 0)), "#0F766E")
+            kpi(cols[2], "💰", "Monetary", fmt_money(r.get("monetary", 0)), "#0EA5E9")
+            kpi(cols[3], "⭐", "Đánh giá TB", f'{r.get("avg_review_score", float("nan")):.1f}', "#F59E0B")
             if seg is not None:
                 s = seg[seg["customer_unique_id"] == cid]
                 if not s.empty:
