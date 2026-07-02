@@ -19,6 +19,12 @@ try:
 except Exception:
     HAS_PX = False
 
+try:
+    from streamlit_option_menu import option_menu
+    HAS_MENU = True
+except Exception:
+    HAS_MENU = False
+
 # ---- Cấu hình chung ----
 ARTIFACTS = ["orders_view", "customers_view", "order_lines_view", "rfm_features",
              "stat_results", "customer_segments", "segment_profiles",
@@ -45,6 +51,8 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .block-container { padding-top: 1.4rem; padding-bottom: 2rem; max-width: 1250px; }
 #MainMenu, footer { visibility: hidden; }
 header[data-testid="stHeader"] { background: transparent; }
+[data-testid="stAppViewContainer"] { background: #EEF3F6; }
+section[data-testid="stSidebar"] { background: #FFFFFF; }
 
 /* Hero */
 .hero {
@@ -67,8 +75,8 @@ header[data-testid="stHeader"] { background: transparent; }
 .kpi:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(30,33,48,.10); }
 .kpi .ic { width:46px; height:46px; border-radius:13px; display:flex; align-items:center;
   justify-content:center; font-size:22px; flex-shrink:0; }
-.kpi .val { font-family:'Poppins',sans-serif; font-weight:700; font-size:1.5rem;
-  color:#1E2130; line-height:1.1; }
+.kpi .val { font-family:'Poppins',sans-serif; font-weight:700; font-size:1.35rem;
+  color:#1E2130; line-height:1.1; white-space:nowrap; }
 .kpi .lab { font-size:.82rem; color:#8A90A2; font-weight:500; margin-top:2px; }
 
 /* Section heading */
@@ -133,9 +141,9 @@ def fmt_int(x) -> str:
 def fmt_money(x) -> str:
     x = float(x)
     if x >= 1e9:
-        return f"R$ {x/1e9:.2f} tỷ"
+        return f"R$ {x/1e9:.1f}tỷ"
     if x >= 1e6:
-        return f"R$ {x/1e6:.2f} tr"
+        return f"R$ {x/1e6:.1f}tr"
     if x >= 1e3:
         return f"R$ {x/1e3:.0f}k"
     return f"R$ {x:.0f}"
@@ -330,25 +338,54 @@ def tab_lookup(d):
 
 
 # --------------------------------------------------------------------------- #
+NAV = [("Tổng quan", "bar-chart-fill", tab_overview),
+       ("RFM & Phân khúc", "people-fill", tab_rfm),
+       ("Thống kê", "clipboard-data", tab_stats),
+       ("Cohort/Thời gian", "graph-up", tab_cohort),
+       ("Luật kết hợp", "link-45deg", tab_assoc),
+       ("Mô hình", "cpu-fill", tab_models),
+       ("Tra cứu KH", "search", tab_lookup)]
+
+MENU_STYLES = {
+    "container": {"padding": "0", "background-color": "transparent"},
+    "icon": {"color": "#0F766E", "font-size": "15px"},
+    "nav-link": {"font-size": "14px", "font-weight": "600", "color": "#334155",
+                 "text-align": "left", "margin": "3px 0", "border-radius": "10px",
+                 "--hover-color": "#ECFDF5"},
+    "nav-link-selected": {"background-color": "#059669", "color": "white",
+                          "font-weight": "700"},
+}
+
+HERO = """<div class="hero">
+<h1>🛒 Olist · Phân tích hành vi &amp; phân khúc khách hàng</h1>
+<p>Khai phá hành vi mua sắm và xây dựng chân dung khách hàng trên nền tảng
+thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</p>
+<div class="tags"><span class="tag">~100K đơn hàng</span>
+<span class="tag">RFM &amp; Segmentation</span><span class="tag">Machine Learning</span>
+<span class="tag">Deep Learning</span></div></div>"""
+
+
 def main():
     global FIG_DIR
     st.markdown(CSS, unsafe_allow_html=True)
+    labels = [n[0] for n in NAV]
 
-    st.sidebar.markdown("### ⚙️ Nguồn dữ liệu")
-    detected = auto_root()
-    root = Path(st.sidebar.text_input("Thư mục outputs",
-                value=str(detected) if detected else "outputs"))
-    FIG_DIR = root / "figures"
+    with st.sidebar:
+        st.markdown("## 🛒 Olist Analytics")
+        if HAS_MENU:
+            choice = option_menu(None, labels, icons=[n[1] for n in NAV],
+                                 default_index=0, styles=MENU_STYLES)
+        else:
+            choice = st.radio("Điều hướng", labels, label_visibility="collapsed")
+        st.markdown("---")
+        st.markdown("##### ⚙️ Nguồn dữ liệu")
+        detected = auto_root()
+        root = Path(st.text_input("Thư mục outputs",
+                    value=str(detected) if detected else "outputs",
+                    label_visibility="collapsed"))
+        FIG_DIR = root / "figures"
 
-    st.markdown(
-        """<div class="hero">
-        <h1>🛒 Olist · Phân tích hành vi &amp; phân khúc khách hàng</h1>
-        <p>Khai phá hành vi mua sắm và xây dựng chân dung khách hàng trên nền tảng
-        thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</p>
-        <div class="tags"><span class="tag">~100K đơn hàng</span>
-        <span class="tag">RFM & Segmentation</span><span class="tag">Machine Learning</span>
-        <span class="tag">Deep Learning</span></div></div>""",
-        unsafe_allow_html=True)
+    st.markdown(HERO, unsafe_allow_html=True)
 
     if not has_data(root):
         st.error(f"Không thấy dữ liệu parquet trong `{root/'data'}`.")
@@ -359,17 +396,14 @@ def main():
 
     d = load_all(str(root / "data"))
     n = sum(v is not None for v in d.values())
-    st.sidebar.success(f"Đang đọc: {root/'data'}")
-    st.sidebar.caption(f"✅ Đã nạp {n}/{len(ARTIFACTS)} bảng dữ liệu")
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Đồ án Phân tích dữ liệu**  \nĐH Sư phạm TP.HCM")
+    with st.sidebar:
+        st.success(f"✅ Đã nạp {n}/{len(ARTIFACTS)} bảng")
+        st.caption(f"Đang đọc: {root/'data'}")
+        st.markdown("---")
+        st.markdown("**Đồ án Phân tích dữ liệu**  \nĐH Sư phạm TP.HCM")
 
-    labels = ["📊 Tổng quan", "👥 RFM & Phân khúc", "🧪 Thống kê", "📈 Cohort/Thời gian",
-              "🔗 Luật kết hợp", "🤖 Mô hình", "🔎 Tra cứu KH"]
-    fns = [tab_overview, tab_rfm, tab_stats, tab_cohort, tab_assoc, tab_models, tab_lookup]
-    for t, fn in zip(st.tabs(labels), fns):
-        with t:
-            fn(d)
+    fn = {n[0]: n[2] for n in NAV}[choice]
+    fn(d)
 
 
 if __name__ == "__main__":
