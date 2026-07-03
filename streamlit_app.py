@@ -102,6 +102,13 @@ hr { margin: 0.8rem 0; border-color:#E5E9EF; }
 .pipe { background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; font-weight:600;
   font-size:.85rem; padding:10px 14px; border-radius:10px; margin:4px 0 14px;
   line-height:1.7; }
+
+/* Hộp nhận xét */
+.insight { background:#F8FAFC; border:1px solid #E5E9EF; border-left:3px solid #059669;
+  border-radius:10px; padding:12px 16px; margin:14px 0 4px; color:#334155; font-size:.9rem; }
+.insight .ins-title { font-weight:700; color:#0F172A; margin-bottom:4px; }
+.insight ul { margin:0; padding-left:18px; }
+.insight li { margin:4px 0; line-height:1.5; }
 </style>
 """
 
@@ -165,6 +172,13 @@ def kpi(col, icon, label, value, tint):
 def section(title, sub=""):
     st.markdown(f'<div class="sec"><h3>{title}</h3>'
                 + (f'<p>{sub}</p>' if sub else "") + '</div>', unsafe_allow_html=True)
+
+
+def note(lines):
+    """Hộp nhận xét (danh sách gạch đầu dòng, cho phép thẻ <b>)."""
+    items = "".join(f"<li>{x}</li>" for x in lines)
+    st.markdown(f'<div class="insight"><div class="ins-title">📝 Nhận xét</div>'
+                f'<ul>{items}</ul></div>', unsafe_allow_html=True)
 
 
 def style_fig(fig, h=360):
@@ -305,18 +319,36 @@ def tab_overview(d):
                           .dt.to_period("M").dt.to_timestamp())
              .groupby("month").agg(doanh_thu=("order_value", "sum")).reset_index())
         if HAS_PX:
-            fig = px.area(m, x="month", y="doanh_thu", title="Doanh thu theo tháng")
-            fig.update_traces(line_color=PRIMARY, fillcolor="rgba(5,150,105,.12)")
+            fig = px.area(m, x="month", y="doanh_thu", markers=True,
+                          title="Doanh thu theo tháng",
+                          labels={"month": "Tháng", "doanh_thu": "Doanh thu (R$)"})
+            fig.update_traces(line_color="#0EA5E9", fillcolor="rgba(14,165,233,.14)")
             st.plotly_chart(style_fig(fig), use_container_width=True)
     with c2:
         top = (deliv.groupby("customer_state")["order_value"].sum()
                .sort_values(ascending=False).head(8).reset_index())
+        top.columns = ["Bang", "Doanh thu"]
         if HAS_PX:
-            fig = px.bar(top, x="order_value", y="customer_state", orientation="h",
-                         title="Top bang theo doanh thu", color="order_value",
-                         color_continuous_scale=["#D1FAE5", PRIMARY])
-            fig.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed"))
+            fig = px.bar(top, x="Doanh thu", y="Bang", orientation="h",
+                         title="Top bang theo doanh thu", color="Bang",
+                         color_discrete_sequence=PALETTE)
+            fig.update_layout(showlegend=False, yaxis=dict(autorange="reversed"))
             st.plotly_chart(style_fig(fig), use_container_width=True)
+
+    tot = deliv["order_value"].sum()
+    bs = deliv.groupby("customer_state")["order_value"].sum().sort_values(ascending=False)
+    note([
+        f"<b>{bs.index[0]}</b> (São Paulo) dẫn đầu tuyệt đối với khoảng "
+        f"<b>{bs.iloc[0]/tot:.0%}</b> tổng doanh thu, bỏ xa các bang còn lại.",
+        f"Top 3 bang (<b>{', '.join(bs.head(3).index)}</b>) chiếm tới "
+        f"<b>{bs.head(3).sum()/tot:.0%}</b> doanh thu → thị trường tập trung mạnh ở vùng "
+        f"Đông Nam Brazil.",
+        "Doanh thu <b>tăng trưởng mạnh từ đầu 2017</b>, đạt đỉnh ~1,1–1,2 triệu R$/tháng "
+        "giai đoạn cuối 2017–2018; năm 2016 gần như bằng 0 (dữ liệu mới bắt đầu) và tháng "
+        "cuối chuỗi sụt giảm do dữ liệu chưa đầy đủ.",
+        f"Tỉ lệ mua lại chỉ <b>{cv['is_repeat_buyer'].mean():.1%}</b> — khách chủ yếu mua "
+        "một lần, gợi ý dư địa lớn cho chương trình giữ chân (loyalty).",
+    ])
 
 
 def tab_rfm(d):
