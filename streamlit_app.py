@@ -125,6 +125,9 @@ section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#FBF
 .brand .ac { color:#EF5B4C; }
 .nav-lbl { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.18em;
   font-size:.62rem; color:#9FD3CB; margin:8px 0 2px; }
+.crest { width:42px; height:42px; border-radius:50%; background:#EF5B4C; color:#FBF7F0;
+  display:flex; align-items:center; justify-content:center; font-size:1.2rem; margin-bottom:8px;
+  box-shadow:0 3px 10px rgba(239,91,76,.35); }
 
 /* ===== Insight / pipe / dataframe ===== */
 [data-testid="stDataFrame"] { border:1px solid #E4DCC9; border-radius:8px; }
@@ -182,6 +185,17 @@ def load_all(data_dir: str) -> dict:
                 if (dd / f"{n}.parquet").exists() else None) for n in ARTIFACTS}
 
 
+@st.cache_data(show_spinner=False, ttl=86400)
+def brazil_geojson():
+    """GeoJSON các bang Brazil (properties.name = tên bang). Cache 1 ngày."""
+    import json as _json
+    import urllib.request
+    url = ("https://raw.githubusercontent.com/codeforamerica/click_that_hood/"
+           "master/public/data/brazil-states.geojson")
+    with urllib.request.urlopen(url, timeout=12) as resp:
+        return _json.loads(resp.read().decode("utf-8"))
+
+
 def fmt_int(x) -> str:
     try:
         return f"{int(x):,}".replace(",", ".")
@@ -216,6 +230,46 @@ def note(lines):
     items = "".join(f"<li>{x}</li>" for x in lines)
     st.markdown(f'<div class="insight"><div class="ins-title">📝 Nhận xét</div>'
                 f'<ul>{items}</ul></div>', unsafe_allow_html=True)
+
+
+def _hexa(h, a):
+    h = h.lstrip("#")
+    return f"rgba({int(h[0:2],16)},{int(h[2:4],16)},{int(h[4:6],16)},{a})"
+
+
+def _spark(series, color):
+    fig = go.Figure(go.Scatter(y=list(series), mode="lines",
+                    line=dict(color=color, width=2), fill="tozeroy",
+                    fillcolor=_hexa(color, 0.14)))
+    fig.update_layout(height=46, margin=dict(l=0, r=0, t=2, b=0),
+                      xaxis=dict(visible=False), yaxis=dict(visible=False),
+                      plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                      showlegend=False)
+    return fig
+
+
+def delta_pct(s):
+    s = pd.Series(list(s)).dropna()
+    if len(s) < 6:
+        return None
+    b = s.iloc[-6:-3].mean()
+    return (s.iloc[-3:].mean() - b) / b if b else None
+
+
+def kpi_rich(col, label, value, tint, series=None, delta=None):
+    with col:
+        badge = ""
+        if delta is not None and pd.notna(delta):
+            up = delta >= 0
+            badge = (f'<span style="font-family:IBM Plex Mono,monospace;font-size:.7rem;'
+                     f'font-weight:600;color:{"#2FA36B" if up else "#EF5B4C"}"> '
+                     f'{"▲" if up else "▼"} {abs(delta):.0%}</span>')
+        st.markdown(f'<div class="kpi"><div class="val" style="color:{tint}">{value}'
+                    f'{badge}</div><div class="lab">{label}</div></div>',
+                    unsafe_allow_html=True)
+        if series is not None and HAS_PX and len(list(series)) > 1:
+            st.plotly_chart(_spark(series, tint), use_container_width=True,
+                            config={"displayModeBar": False})
 
 
 def style_fig(fig, h=360):
@@ -276,10 +330,10 @@ def tab_intro(d):
     n_orders = (f"{ov['order_id'].nunique():,}".replace(",", ".")
                 if ov is not None else "~100.000")
     cols = st.columns(4)
-    kpi(cols[0], "", "Nguồn", "Kaggle · Olist", "#059669")
-    kpi(cols[1], "", "Số đơn hàng", n_orders, "#0F766E")
-    kpi(cols[2], "", "Giai đoạn", "2016 – 2018", "#0EA5E9")
-    kpi(cols[3], "", "Số bảng", "9 bảng", "#F59E0B")
+    kpi(cols[0], "", "Nguồn", "Kaggle · Olist", "#EF5B4C")
+    kpi(cols[1], "", "Số đơn hàng", n_orders, "#2FA36B")
+    kpi(cols[2], "", "Giai đoạn", "2016 – 2018", "#2C8C99")
+    kpi(cols[3], "", "Số bảng", "9 bảng", "#E0A73E")
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
     st.markdown(
@@ -287,6 +341,21 @@ def tab_intro(d):
         "đơn hàng** giai đoạn 09/2016–10/2018, gồm **9 bảng quan hệ** liên kết qua khóa "
         "ngoại. Nguồn: [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) "
         "· giấy phép CC BY-NC-SA 4.0.")
+
+    section("Mục tiêu & câu hỏi nghiên cứu")
+    oc1, oc2 = st.columns(2)
+    oc1.markdown(
+        "**🎯 Mục tiêu**\n\n"
+        "- Hiểu hành vi mua sắm & xây dựng chân dung khách hàng.\n"
+        "- Phân khúc khách hàng phục vụ marketing / giữ chân.\n"
+        "- Dự đoán mức độ hài lòng & khả năng mua lại.\n"
+        "- Khai phá luật kết hợp cho gợi ý bán chéo.")
+    oc2.markdown(
+        "**❓ Câu hỏi nghiên cứu**\n\n"
+        "- Yếu tố nào ảnh hưởng mạnh nhất tới sự hài lòng?\n"
+        "- Khách hàng chia thành mấy nhóm, đặc điểm ra sao?\n"
+        "- Doanh thu & hành vi khác nhau thế nào theo vùng / thời gian?\n"
+        "- Có thể dự đoán khách sẽ quay lại mua không?")
 
     ol = d.get("order_lines_view")
     if HAS_PX and ov is not None:
@@ -362,19 +431,59 @@ def tab_intro(d):
     ], columns=["Bước", "Kỹ thuật / Thuật toán", "Thư viện"])
     st.dataframe(methods, hide_index=True, use_container_width=True)
 
+    prof = d.get("segment_profiles")
+    if HAS_PX and prof is not None and \
+            {"recency", "frequency", "monetary", "review", "persona"}.issubset(prof.columns):
+        section("So sánh chân dung phân khúc (radar)",
+                "Điểm chuẩn hóa 0–1 giữa các cụm K-Means (Gần đây = recency đảo ngược)")
+
+        def _nz(s):
+            s = pd.to_numeric(s, errors="coerce")
+            rng = s.max() - s.min()
+            return (s - s.min()) / rng if rng else s * 0 + 0.5
+
+        axes = ["Gần đây", "Tần suất", "Chi tiêu", "Hài lòng"]
+        rr = pd.DataFrame({
+            "Gần đây": 1 - _nz(prof["recency"]), "Tần suất": _nz(prof["frequency"]),
+            "Chi tiêu": _nz(prof["monetary"]), "Hài lòng": _nz(prof["review"]),
+            "persona": prof["persona"].astype(str),
+            "cluster": prof.get("cluster", range(len(prof))),
+        })
+        fig = go.Figure()
+        for i, row in rr.iterrows():
+            vals = [row[a] for a in axes]
+            fig.add_trace(go.Scatterpolar(
+                r=vals + [vals[0]], theta=axes + [axes[0]], fill="toself",
+                name=f"{row['persona']} (cụm {row['cluster']})",
+                line=dict(color=PALETTE[i % len(PALETTE)])))
+        fig.update_layout(height=430, font_family="Inter",
+                          polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                          paper_bgcolor="rgba(0,0,0,0)",
+                          legend=dict(orientation="h", y=-0.1))
+        st.plotly_chart(fig, use_container_width=True)
+
 
 def tab_overview(d):
     ov, cv = d["orders_view"], d["customers_view"]
     if ov is None or cv is None:
         st.warning("Thiếu orders_view / customers_view."); return
     deliv = ov[ov["order_status"] == "delivered"]
-    section("Bức tranh tổng quan", "Các chỉ số chính của toàn bộ giao dịch trên Olist")
+    section("Bức tranh tổng quan",
+            "Các chỉ số chính · mũi tên = thay đổi 3 tháng gần nhất so với 3 tháng trước")
+    bm = (deliv.assign(month=pd.to_datetime(deliv["order_purchase_timestamp"])
+                       .dt.to_period("M").dt.to_timestamp()).groupby("month"))
+    rev_s, ord_s = bm["order_value"].sum(), bm["order_id"].nunique()
+    cus_s, rvw_s = bm["customer_unique_id"].nunique(), bm["review_score"].mean()
     cols = st.columns(5)
-    kpi(cols[0], "💰", "Tổng doanh thu", fmt_money(deliv["order_value"].sum()), "#059669")
-    kpi(cols[1], "🧾", "Số đơn hàng", fmt_int(ov["order_id"].nunique()), "#0F766E")
-    kpi(cols[2], "👥", "Số khách hàng", fmt_int(ov["customer_unique_id"].nunique()), "#0EA5E9")
-    kpi(cols[3], "⭐", "Đánh giá TB", f'{ov["review_score"].mean():.2f}', "#F59E0B")
-    kpi(cols[4], "🔁", "Tỉ lệ mua lại", f'{cv["is_repeat_buyer"].mean():.1%}', "#EF4444")
+    kpi_rich(cols[0], "Tổng doanh thu", fmt_money(deliv["order_value"].sum()),
+             "#EF5B4C", rev_s, delta_pct(rev_s))
+    kpi_rich(cols[1], "Số đơn hàng", fmt_int(ov["order_id"].nunique()),
+             "#2FA36B", ord_s, delta_pct(ord_s))
+    kpi_rich(cols[2], "Số khách hàng", fmt_int(ov["customer_unique_id"].nunique()),
+             "#2C8C99", cus_s, delta_pct(cus_s))
+    kpi_rich(cols[3], "Đánh giá TB", f'{ov["review_score"].mean():.2f}',
+             "#E0A73E", rvw_s, delta_pct(rvw_s))
+    kpi_rich(cols[4], "Tỉ lệ mua lại", f'{cv["is_repeat_buyer"].mean():.1%}', "#7C5CFC")
 
     st.write("")
     c1, c2 = st.columns((3, 2))
@@ -663,7 +772,7 @@ def tab_models(d):
 
 def tab_geo(d):
     section("Bản đồ địa lý theo bang",
-            "Doanh thu (kích thước bong bóng) & mức hài lòng (màu) theo bang Brazil")
+            "Điểm đánh giá TB tô màu từng bang · hover xem doanh thu & số đơn")
     ov = d.get("orders_view")
     if ov is None:
         st.warning("Thiếu orders_view."); return
@@ -674,18 +783,39 @@ def tab_geo(d):
     g["lat"] = g["customer_state"].map(lambda s: STATE_CENTROIDS.get(s, (None, None))[0])
     g["lon"] = g["customer_state"].map(lambda s: STATE_CENTROIDS.get(s, (None, None))[1])
     g["Bang"] = g["customer_state"].map(lambda s: f"{s} — {UF_NAMES.get(s, s)}")
-    g = g.dropna(subset=["lat", "lon"])
-    if HAS_PX and len(g):
+    g["name"] = g["customer_state"].map(UF_NAMES)
+
+    used = False
+    if HAS_PX:
+        try:  # bản đồ tô màu bang (cần internet để tải GeoJSON)
+            gj = brazil_geojson()
+            fig = px.choropleth(
+                g, geojson=gj, locations="customer_state", featureidkey="properties.sigla",
+                color="danh_gia", color_continuous_scale="RdYlGn", range_color=(3.6, 4.6),
+                hover_name="Bang",
+                hover_data={"doanh_thu": ":,.0f", "so_don": ":,", "danh_gia": ":.2f",
+                            "customer_state": False},
+                title="Điểm đánh giá trung bình theo bang",
+                labels={"danh_gia": "Đánh giá TB"})
+            fig.update_geos(fitbounds="locations", visible=False, bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(style_fig(fig, 500), use_container_width=True)
+            used = True
+        except Exception:
+            used = False
+
+    gg = g.dropna(subset=["lat", "lon"])
+    if not used and HAS_PX and len(gg):  # fallback: bản đồ bong bóng
         fig = px.scatter_geo(
-            g, lat="lat", lon="lon", size="doanh_thu", color="danh_gia",
+            gg, lat="lat", lon="lon", size="doanh_thu", color="danh_gia",
             hover_name="Bang", size_max=45, color_continuous_scale="RdYlGn",
             hover_data={"doanh_thu": ":,.0f", "so_don": ":,", "danh_gia": ":.2f",
                         "lat": False, "lon": False},
-            title="Doanh thu & điểm đánh giá TB theo bang")
+            title="Doanh thu (kích thước) & đánh giá TB (màu) theo bang")
         fig.update_geos(scope="south america", showcountries=True,
                         landcolor="#EFE7D5", bgcolor="rgba(0,0,0,0)",
                         fitbounds="locations")
         st.plotly_chart(style_fig(fig, 480), use_container_width=True)
+
     tbl = g[["Bang", "doanh_thu", "so_don", "danh_gia"]].sort_values(
         "doanh_thu", ascending=False).round({"danh_gia": 2})
     st.dataframe(tbl, hide_index=True, use_container_width=True)
@@ -742,6 +872,48 @@ def tab_conclusion(d):
         "Hướng phát triển: thêm dữ liệu hành vi duyệt web, mô hình CLV/churn, hệ gợi ý sản phẩm, "
         "và cập nhật dữ liệu theo thời gian thực.",
     ])
+
+    st.markdown("---")
+    st.download_button("📄 Tải báo cáo tóm tắt (HTML)", build_report_html(d),
+                       "bao_cao_olist.html", "text/html", use_container_width=False)
+
+
+def build_report_html(d):
+    ov, cv = d.get("orders_view"), d.get("customers_view")
+    p = ["<html><head><meta charset='utf-8'><title>Báo cáo Olist</title><style>",
+         "body{font-family:Arial,Helvetica,sans-serif;margin:36px;color:#1B3A4B;line-height:1.5}",
+         "h1{color:#EF5B4C;margin-bottom:4px} h2{color:#0E6E63;margin-top:26px}",
+         "table{border-collapse:collapse;font-size:13px;margin-top:8px}",
+         "td,th{border:1px solid #ddd;padding:6px 10px;text-align:left}",
+         ".kpis{background:#FBF7F0;border:1px solid #E4DCC9;padding:12px 16px;border-radius:8px}",
+         "</style></head><body>",
+         "<h1>Olist Analytics — Báo cáo tóm tắt</h1>",
+         "<p style='color:#6C7A72'>Phân tích hành vi & phân khúc khách hàng · Đồ án Phân tích dữ liệu</p>"]
+    if ov is not None and cv is not None:
+        deliv = ov[ov["order_status"] == "delivered"]
+        p.append("<div class='kpis'><b>Tổng doanh thu:</b> {:,.0f} R$ &nbsp;·&nbsp; "
+                 "<b>Số đơn:</b> {:,} &nbsp;·&nbsp; <b>Số khách:</b> {:,} &nbsp;·&nbsp; "
+                 "<b>Đánh giá TB:</b> {:.2f} &nbsp;·&nbsp; <b>Tỉ lệ mua lại:</b> {:.1%}</div>".format(
+                     deliv["order_value"].sum(), ov["order_id"].nunique(),
+                     ov["customer_unique_id"].nunique(), ov["review_score"].mean(),
+                     cv["is_repeat_buyer"].mean()))
+    p.append("<h2>Kết luận chính</h2><ul>"
+             "<li>Doanh thu tăng mạnh 2017–2018, tập trung vùng Đông Nam (SP dẫn đầu).</li>"
+             "<li>Khách chủ yếu mua một lần — tỉ lệ mua lại thấp.</li>"
+             "<li>Thời gian giao hàng ảnh hưởng mạnh tới mức hài lòng.</li>"
+             "<li>Giỏ hàng thưa, ít mua kèm chéo danh mục.</li></ul>")
+    prof = d.get("segment_profiles")
+    if prof is not None:
+        p.append("<h2>Chân dung phân khúc (K-Means)</h2>")
+        p.append(prof.round(2).to_html(index=False))
+    stat = d.get("stat_results")
+    if stat is not None:
+        cols = [c for c in ["id", "giả thuyết", "param", "p_holm", "kết luận"] if c in stat.columns]
+        p.append("<h2>Kết quả kiểm định</h2>")
+        p.append(stat[cols].to_html(index=False))
+    p.append("<p style='color:#9A8C74;margin-top:26px'>Trường ĐHSP TP.HCM · Khoa CNTT · "
+             "GVHD: TS. Nguyễn Tấn Trung</p></body></html>")
+    return "".join(p)
 
 
 def tab_lookup(d):
@@ -839,7 +1011,9 @@ def tab_lookup(d):
             if SEGMENT_DESC.get(seg_name):
                 lines.append(f"Gợi ý hành động: {SEGMENT_DESC[seg_name]}")
             note(lines)
-            st.dataframe(row.T, use_container_width=True)
+            detail = row.T.reset_index()
+            detail.columns = ["Đặc trưng", "Giá trị"]
+            st.dataframe(detail, hide_index=True, use_container_width=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -896,7 +1070,8 @@ def main():
     labels = [n[0] for n in NAV]
 
     with st.sidebar:
-        st.markdown('<div class="brand">Olist <span class="ac">Analytics</span></div>'
+        st.markdown('<div class="crest">🎓</div>'
+                    '<div class="brand">Olist <span class="ac">Analytics</span></div>'
                     '<div class="nav-lbl">Navigation</div>', unsafe_allow_html=True)
         if HAS_MENU:
             choice = option_menu(None, labels, icons=[n[1] for n in NAV],
