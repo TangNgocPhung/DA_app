@@ -34,8 +34,8 @@ FIG_DIR: Path | None = None
 
 PRIMARY = "#059669"
 ACCENT = "#0F766E"
-PALETTE = ["#059669", "#0F766E", "#10B981", "#F59E0B", "#0EA5E9",
-           "#34D399", "#EF4444", "#14B8A6"]
+PALETTE = ["#059669", "#0EA5E9", "#F59E0B", "#EF4444", "#8B5CF6",
+           "#EC4899", "#14B8A6", "#F97316"]
 
 st.set_page_config(page_title="Olist · Phân tích khách hàng",
                    page_icon="🛒", layout="wide", initial_sidebar_state="expanded")
@@ -218,24 +218,30 @@ def tab_intro(d):
             s.columns = ["trạng thái", "số đơn"]
             fig = px.bar(s.sort_values("số đơn"), x="số đơn", y="trạng thái",
                          orientation="h", title="Trạng thái đơn hàng (thang log)",
-                         text="số đơn", color_discrete_sequence=[PRIMARY])
+                         text="số đơn", color="trạng thái",
+                         color_discrete_sequence=PALETTE)
             fig.update_xaxes(type="log")
             fig.update_traces(textposition="outside", cliponaxis=False)
+            fig.update_layout(showlegend=False)
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r1c2:
             rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
             rv.columns = ["điểm", "số lượng"]
+            rv["điểm"] = rv["điểm"].astype(str)
             fig = px.bar(rv, x="điểm", y="số lượng", title="Phân bố điểm đánh giá (1–5)",
-                         color="điểm", color_continuous_scale=["#D1FAE5", PRIMARY])
-            fig.update_layout(coloraxis_showscale=False)
+                         color="điểm", color_discrete_map={
+                             "1": "#EF4444", "2": "#F97316", "3": "#F59E0B",
+                             "4": "#34D399", "5": "#059669"})
+            fig.update_layout(showlegend=False)
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         r2c1, r2c2 = st.columns(2)
         with r2c1:
             pt = ov["payment_type_primary"].value_counts().reset_index()
             pt.columns = ["phương thức", "số đơn"]
             fig = px.bar(pt, x="số đơn", y="phương thức", orientation="h",
-                         title="Phương thức thanh toán", color_discrete_sequence=[ACCENT])
-            fig.update_layout(yaxis=dict(autorange="reversed"))
+                         title="Phương thức thanh toán", color="phương thức",
+                         color_discrete_sequence=PALETTE)
+            fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r2c2:
             if ol is not None:
@@ -243,7 +249,8 @@ def tab_intro(d):
                 tc.columns = ["danh mục", "số dòng"]
                 fig = px.bar(tc.sort_values("số dòng"), x="số dòng", y="danh mục",
                              orientation="h", title="Top 10 danh mục sản phẩm",
-                             color_discrete_sequence=[PRIMARY])
+                             color="danh mục", color_discrete_sequence=PALETTE)
+                fig.update_layout(showlegend=False)
                 st.plotly_chart(style_fig(fig, 300), use_container_width=True)
 
     section("Cấu trúc 9 bảng dữ liệu")
