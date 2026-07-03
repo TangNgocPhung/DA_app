@@ -646,11 +646,12 @@ def tab_stats(d):
         {True: "Có ý nghĩa", False: "Không"})
     if HAS_PX:
         fig = px.bar(eff.sort_values("effect"), x="effect", y="id", orientation="h",
-                     color="Ý nghĩa", text="effect", hover_data=["giả thuyết"],
-                     color_discrete_map={"Có ý nghĩa": "#059669", "Không": "#94A3B8"},
+                     color="id", text="effect", hover_data=["giả thuyết", "Ý nghĩa"],
+                     color_discrete_sequence=PALETTE,
                      title="Độ mạnh mối liên hệ (effect size) theo giả thuyết",
                      labels={"effect": "Effect size (|giá trị|)", "id": "Giả thuyết"})
         fig.update_traces(texttemplate="%{text:.3f}", textposition="outside", cliponaxis=False)
+        fig.update_layout(showlegend=False)
         st.plotly_chart(style_fig(fig), use_container_width=True)
 
     n_sig = int((pd.to_numeric(sr["p_holm"], errors="coerce") < 0.05).sum())
@@ -689,7 +690,8 @@ def tab_cohort(d):
              .groupby("month").agg(so_don=("order_id", "nunique")).reset_index())
         fig = px.bar(m, x="month", y="so_don", title="Số đơn theo tháng",
                      labels={"month": "Tháng", "so_don": "Số đơn"},
-                     color_discrete_sequence=[PRIMARY])
+                     color="so_don", color_continuous_scale=["#FBD9D2", "#EF5B4C"])
+        fig.update_layout(coloraxis_showscale=False)
         st.plotly_chart(style_fig(fig), use_container_width=True)
     c1, c2 = st.columns(2)
     with c1:
