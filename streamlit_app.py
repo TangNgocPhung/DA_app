@@ -32,10 +32,10 @@ ARTIFACTS = ["orders_view", "customers_view", "order_lines_view", "rfm_features"
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR: Path | None = None
 
-PRIMARY = "#059669"
-ACCENT = "#0F766E"
-PALETTE = ["#059669", "#0EA5E9", "#F59E0B", "#EF4444", "#8B5CF6",
-           "#EC4899", "#14B8A6", "#F97316"]
+PRIMARY = "#2FA36B"   # emerald tươi (biểu đồ đơn sắc)
+ACCENT = "#EF5B4C"    # coral (nhấn)
+PALETTE = ["#EF5B4C", "#2FA36B", "#E0A73E", "#2C8C99", "#7C5CFC",
+           "#F2789F", "#38B6A0", "#FF9F45"]
 
 # Mã bang Brazil (UF) -> tên đầy đủ
 UF_NAMES = {
@@ -81,70 +81,72 @@ st.set_page_config(page_title="Olist · Phân tích khách hàng",
 # --------------------------------------------------------------------------- #
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.block-container { padding-top: 1.4rem; padding-bottom: 2rem; max-width: 1250px; }
-#MainMenu, footer { visibility: hidden; }
-header[data-testid="stHeader"] { background: transparent; }
-[data-testid="stAppViewContainer"] { background: #F1F5F9; }
+html, body, [class*="css"] { font-family:'Inter', sans-serif; color:#1B3A4B; }
+[data-testid="stAppViewContainer"] { background:#FBF7F0; }
+.block-container { padding-top:1rem; padding-bottom:2.4rem; max-width:1290px; }
+#MainMenu, footer { visibility:hidden; }
+header[data-testid="stHeader"] { background:transparent; }
 
-/* Header bar (gọn, kiểu BI) */
-.topbar { background:#fff; border:1px solid #E5E9EF; border-left:5px solid #059669;
-  border-radius:12px; padding:18px 22px; margin-bottom:20px;
-  display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
-.tb-title { font-size:1.3rem; font-weight:800; color:#0F172A; letter-spacing:-.01em; }
-.tb-sub { color:#64748B; font-size:.9rem; margin-top:5px; max-width:780px; line-height:1.45; }
-.tb-meta { color:#059669; font-size:.78rem; font-weight:600; background:#ECFDF5;
-  border:1px solid #A7F3D0; padding:6px 12px; border-radius:8px; white-space:nowrap; }
+/* ===== Masthead (tạp chí) ===== */
+.mast { border-top:3px solid #1B3A4B; border-bottom:3px solid #1B3A4B;
+  padding:12px 0 14px; margin-bottom:22px; }
+.mast-strip { display:flex; justify-content:space-between; gap:14px; padding:0 2px;
+  font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.14em;
+  font-size:.66rem; color:#6C7A72; }
+.mast-title { font-family:'Playfair Display',serif; font-weight:900; text-align:center;
+  font-size:3.1rem; line-height:1; color:#1B3A4B; margin:12px 0 8px; }
+.mast-title .ac { color:#EF5B4C; }
+.mast-sub { text-align:center; font-family:'IBM Plex Mono',monospace; text-transform:uppercase;
+  letter-spacing:.16em; font-size:.72rem; color:#6C7A72; }
+.mast-rule { height:4px; background:#E0A73E; margin:14px 0 12px; position:relative; border-radius:2px; }
+.mast-rule i { position:absolute; top:0; left:0; bottom:0; width:62%; background:#EF5B4C; border-radius:2px; }
 
-/* KPI cards (phẳng, kiểu báo cáo) */
-.kpi { background:#fff; border:1px solid #E5E9EF; border-top:3px solid #059669;
-  border-radius:12px; padding:15px 18px; height:100%; }
-.kpi .lab { font-size:.72rem; font-weight:600; letter-spacing:.04em;
-  text-transform:uppercase; color:#94A3B8; }
-.kpi .val { font-weight:700; font-size:1.55rem; color:#0F172A; margin-top:6px;
-  line-height:1.1; white-space:nowrap; }
+/* ===== KPI (số serif lớn) ===== */
+.kpi { border-top:2px solid #E4DCC9; padding:12px 2px 4px; background:transparent; height:100%; }
+.kpi .val { font-family:'Playfair Display',serif; font-weight:800; font-size:1.95rem; line-height:1; }
+.kpi .lab { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.09em;
+  font-size:.66rem; color:#6C7A72; margin-top:9px; }
 
-/* Section heading */
-.sec { border-left:3px solid #059669; padding-left:12px; margin:10px 0 6px; }
-.sec h3 { font-weight:700; font-size:1.12rem; color:#0F172A; margin:0; }
-.sec p { color:#94A3B8; font-size:.86rem; margin:2px 0 0 0; }
+/* ===== Section ===== */
+.sec { border-top:2px solid #1B3A4B; padding-top:8px; margin:22px 0 8px; }
+.sec h3 { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.12em;
+  font-size:.92rem; font-weight:600; color:#1B3A4B; margin:0; }
+.sec p { color:#9A8C74; font-size:.84rem; margin:4px 0 0; }
 
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom:1px solid #EEF0F5; }
-.stTabs [data-baseweb="tab"] { font-weight:600; font-size:.95rem; padding:8px 16px;
-  border-radius:10px 10px 0 0; }
-.stTabs [aria-selected="true"] { color:#059669 !important; background:#ECFDF5; }
+/* ===== Sidebar teal, chữ kem ===== */
+section[data-testid="stSidebar"] { background:#0E6E63; border-right:none; }
+section[data-testid="stSidebar"] .stMarkdown, section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#FBF7F0 !important; }
+.brand { font-family:'Playfair Display',serif; font-weight:900; font-size:1.75rem; color:#FBF7F0; }
+.brand .ac { color:#EF5B4C; }
+.nav-lbl { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.18em;
+  font-size:.62rem; color:#9FD3CB; margin:8px 0 2px; }
 
-/* Cards for dataframes/plots */
-[data-testid="stDataFrame"] { border:1px solid #E5E9EF; border-radius:10px; }
-section[data-testid="stSidebar"] { background:#FFFFFF; border-right:1px solid #E5E9EF; }
-.small-note { color:#94A3B8; font-size:.82rem; }
-hr { margin: 0.8rem 0; border-color:#E5E9EF; }
+/* ===== Insight / pipe / dataframe ===== */
+[data-testid="stDataFrame"] { border:1px solid #E4DCC9; border-radius:8px; }
+.small-note { color:#9A8C74; font-size:.82rem; }
+hr { border-color:#E4DCC9; }
+.pipe { background:#FFFDF7; border:1px solid #E4DCC9; color:#1B3A4B; font-family:'IBM Plex Mono',monospace;
+  font-size:.78rem; letter-spacing:.03em; padding:10px 14px; border-radius:8px; margin:4px 0 14px; line-height:1.9; }
+.insight { background:#FFFDF7; border:1px solid #E4DCC9; border-left:3px solid #EF5B4C;
+  border-radius:8px; padding:12px 16px; margin:14px 0 4px; color:#3A4A52; font-size:.9rem; }
+.insight .ins-title { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.08em;
+  font-weight:600; color:#1B3A4B; margin-bottom:6px; font-size:.76rem; }
+.insight ul { margin:0; padding-left:18px; } .insight li { margin:4px 0; line-height:1.55; }
 
-/* Thông tin nhóm ở sidebar */
-.credit { font-size:.82rem; color:#475569; line-height:1.5; }
-.credit .c-school { font-weight:700; color:#0F172A; }
-.credit .c-dept { color:#64748B; }
-.credit .c-meta { color:#64748B; margin-top:6px; }
-.credit .c-role { font-weight:600; color:#059669; margin-top:10px; font-size:.72rem;
-  text-transform:uppercase; letter-spacing:.03em; }
+/* ===== Thông tin nhóm (trên nền teal) ===== */
+.credit { font-size:.8rem; color:#DCEFEA; line-height:1.5; }
+.credit .c-school { font-family:'Playfair Display',serif; font-weight:700; font-size:1.05rem; color:#FBF7F0; }
+.credit .c-dept, .credit .c-meta { color:#BFE0D8; }
+.credit .c-role { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.1em;
+  font-weight:600; color:#E0A73E; margin-top:10px; font-size:.66rem; }
 .credit ol.c-list { margin:4px 0 0; padding-left:18px; }
-.credit ol.c-list li { margin:2px 0; }
-.credit .c-gv { font-weight:600; color:#0F172A; margin-top:2px; }
-
-/* Dải quy trình (trang giới thiệu) */
-.pipe { background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; font-weight:600;
-  font-size:.85rem; padding:10px 14px; border-radius:10px; margin:4px 0 14px;
-  line-height:1.7; }
-
-/* Hộp nhận xét */
-.insight { background:#F8FAFC; border:1px solid #E5E9EF; border-left:3px solid #059669;
-  border-radius:10px; padding:12px 16px; margin:14px 0 4px; color:#334155; font-size:.9rem; }
-.insight .ins-title { font-weight:700; color:#0F172A; margin-bottom:4px; }
-.insight ul { margin:0; padding-left:18px; }
-.insight li { margin:4px 0; line-height:1.5; }
+.credit ol.c-list li { margin:2px 0; color:#EAF5F1; }
+.credit .c-gv { font-weight:700; color:#FBF7F0; }
 </style>
 """
 
@@ -200,9 +202,8 @@ def fmt_money(x) -> str:
 
 def kpi(col, icon, label, value, tint):
     col.markdown(
-        f'<div class="kpi" style="border-top-color:{tint}">'
-        f'<div class="lab">{label}</div><div class="val">{value}</div></div>',
-        unsafe_allow_html=True)
+        f'<div class="kpi"><div class="val" style="color:{tint}">{value}</div>'
+        f'<div class="lab">{label}</div></div>', unsafe_allow_html=True)
 
 
 def section(title, sub=""):
@@ -222,7 +223,7 @@ def style_fig(fig, h=360):
         template="plotly_white", height=h, font_family="Inter",
         margin=dict(l=10, r=10, t=54, b=10), colorway=PALETTE,
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        title_font=dict(family="Poppins", size=16, color="#1E2130"),
+        title_font=dict(family="Playfair Display", size=17, color="#1B3A4B"),
         legend=dict(orientation="v", yanchor="top", y=1, x=1.02, font=dict(size=11),
                     title_text=""),
         title=dict(x=0, xanchor="left", pad=dict(b=10)),
@@ -682,7 +683,8 @@ def tab_geo(d):
                         "lat": False, "lon": False},
             title="Doanh thu & điểm đánh giá TB theo bang")
         fig.update_geos(scope="south america", showcountries=True,
-                        landcolor="#F1F5F9", fitbounds="locations")
+                        landcolor="#EFE7D5", bgcolor="rgba(0,0,0,0)",
+                        fitbounds="locations")
         st.plotly_chart(style_fig(fig, 480), use_container_width=True)
     tbl = g[["Bang", "doanh_thu", "so_don", "danh_gia"]].sort_values(
         "doanh_thu", ascending=False).round({"danh_gia": 2})
@@ -768,32 +770,36 @@ def tab_lookup(d):
 
 
 # --------------------------------------------------------------------------- #
-NAV = [("Giới thiệu", "info-circle-fill", tab_intro),
-       ("Tổng quan", "bar-chart-fill", tab_overview),
-       ("RFM & Phân khúc", "people-fill", tab_rfm),
-       ("Thống kê", "clipboard-data", tab_stats),
-       ("Cohort/Thời gian", "graph-up", tab_cohort),
-       ("Địa lý", "geo-alt-fill", tab_geo),
-       ("Luật kết hợp", "link-45deg", tab_assoc),
-       ("Mô hình", "cpu-fill", tab_models),
-       ("Tra cứu KH", "search", tab_lookup),
-       ("Kết luận", "clipboard-check-fill", tab_conclusion)]
+NAV = [("00 · Giới thiệu", "info-circle-fill", tab_intro),
+       ("01 · Tổng quan", "bar-chart-fill", tab_overview),
+       ("02 · RFM & Phân khúc", "people-fill", tab_rfm),
+       ("03 · Thống kê", "clipboard-data", tab_stats),
+       ("04 · Cohort/Thời gian", "graph-up", tab_cohort),
+       ("05 · Địa lý", "geo-alt-fill", tab_geo),
+       ("06 · Luật kết hợp", "link-45deg", tab_assoc),
+       ("07 · Mô hình", "cpu-fill", tab_models),
+       ("08 · Tra cứu KH", "search", tab_lookup),
+       ("09 · Kết luận", "clipboard-check-fill", tab_conclusion)]
 
 MENU_STYLES = {
     "container": {"padding": "0", "background-color": "transparent"},
-    "icon": {"color": "#0F766E", "font-size": "15px"},
-    "nav-link": {"font-size": "14px", "font-weight": "600", "color": "#334155",
-                 "text-align": "left", "margin": "3px 0", "border-radius": "10px",
-                 "--hover-color": "#ECFDF5"},
-    "nav-link-selected": {"background-color": "#059669", "color": "white",
+    "icon": {"color": "#E0A73E", "font-size": "14px"},
+    "nav-link": {"font-family": "'IBM Plex Mono', monospace", "font-size": "12.5px",
+                 "font-weight": "500", "text-transform": "uppercase",
+                 "letter-spacing": "0.07em", "color": "#CDE8E2", "text-align": "left",
+                 "margin": "2px 0", "border-radius": "6px", "--hover-color": "#0B5952"},
+    "nav-link-selected": {"background-color": "#EF5B4C", "color": "#FFFFFF",
                           "font-weight": "700"},
 }
 
-HERO = """<div class="topbar">
-<div><div class="tb-title">Olist · Phân tích hành vi &amp; phân khúc khách hàng</div>
-<div class="tb-sub">Khai phá hành vi mua sắm và xây dựng chân dung khách hàng trên nền tảng
-thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật kết hợp và mô hình dự đoán.</div></div>
-<div class="tb-meta">Bộ dữ liệu Olist · 2016–2018 · ~100K đơn</div></div>"""
+HERO = """<div class="mast">
+<div class="mast-strip"><span>Khai thác dữ liệu &amp; ứng dụng · ĐHSP TP.HCM · 2026</span>
+<span>Customer Analytics &amp; Segmentation</span></div>
+<div class="mast-title">Olist <span class="ac">Analytics</span></div>
+<div class="mast-sub">Phân tích hành vi &amp; phân khúc khách hàng · Customer Behavior Intelligence</div>
+<div class="mast-rule"><i></i></div>
+<div class="mast-strip"><span>GVHD: TS. Nguyễn Tấn Trung · Đồ án Phân tích dữ liệu</span>
+<span>Olist · ~100K khách hàng · 8 giả thuyết · ML + Deep Learning</span></div></div>"""
 
 SIDEBAR_INFO = """<div class="credit">
 <div class="c-school">Trường Đại học Sư phạm<br>Thành phố Hồ Chí Minh</div>
@@ -817,7 +823,8 @@ def main():
     labels = [n[0] for n in NAV]
 
     with st.sidebar:
-        st.markdown("## 🛒 Olist Analytics")
+        st.markdown('<div class="brand">Olist<span class="ac">Analytics</span></div>'
+                    '<div class="nav-lbl">Navigation</div>', unsafe_allow_html=True)
         if HAS_MENU:
             choice = option_menu(None, labels, icons=[n[1] for n in NAV],
                                  default_index=0, styles=MENU_STYLES)
