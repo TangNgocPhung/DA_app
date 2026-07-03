@@ -765,11 +765,43 @@ def tab_lookup(d):
                "(cột **customer_unique_id** là mã cần dùng):")
     st.dataframe(sample, hide_index=True, use_container_width=True)
 
+    if HAS_PX and len(pool):
+        samp = pool.sample(min(3000, len(pool)), random_state=42)
+        fig = px.scatter(samp, x="recency_days", y="monetary", color="avg_review_score",
+                         opacity=0.6, size_max=8,
+                         color_continuous_scale=["#EF5B4C", "#E0A73E", "#2FA36B"],
+                         title=f"Phân bố khách nhóm '{pick_seg}' — Recency vs Chi tiêu",
+                         labels={"recency_days": "Recency (ngày)", "monetary": "Chi tiêu (R$)",
+                                 "avg_review_score": "Đánh giá"})
+        fig.update_yaxes(type="log")
+        st.plotly_chart(style_fig(fig, 320), use_container_width=True)
+
+    nhom = "toàn bộ khách" if pick_seg == "(Tất cả)" else f"nhóm '{pick_seg}'"
+    freq_tb = float(pool["frequency"].mean())
+    lines = [
+        f"<b>{nhom.capitalize()}</b> có <b>{len(pool):,}</b> khách; chi tiêu TB "
+        f"<b>{fmt_money(pool['monetary'].mean())}</b>, recency TB "
+        f"<b>{pool['recency_days'].mean():.0f}</b> ngày, đánh giá TB "
+        f"<b>{pool['avg_review_score'].mean():.2f}/5</b>.",
+        f"Tần suất mua trung bình <b>{freq_tb:.2f}</b> đơn — "
+        + ("khách <b>chủ yếu mua một lần</b>." if freq_tb < 1.5 else "có <b>mua lặp lại</b>."),
+    ]
+    if SEGMENT_DESC.get(pick_seg):
+        lines.append(f"Đặc điểm &amp; gợi ý: {SEGMENT_DESC[pick_seg]}")
+    note(lines)
+
     ids = sample["customer_unique_id"].tolist()
-    c1, c2 = st.columns([3, 2])
+    ss = st.session_state
+    c1, c2, c3 = st.columns([3, 1.3, 2])
     chosen = c1.selectbox("Bước 2 — chọn mã khách", ids) if ids else ""
-    manual = c2.text_input("… hoặc dán mã khác", "")
-    cid = manual.strip() or chosen
+    rnd = c2.button("🎲 Ngẫu nhiên", use_container_width=True)
+    manual = c3.text_input("… hoặc dán mã khác", "")
+    if rnd and len(pool):
+        ss["lookup_cid"] = str(pool["customer_unique_id"].sample(1).iloc[0])
+    elif chosen != ss.get("lookup_prev"):
+        ss["lookup_cid"] = ""          # đổi lựa chọn ở dropdown -> ưu tiên dropdown
+    ss["lookup_prev"] = chosen
+    cid = manual.strip() or ss.get("lookup_cid", "") or chosen
 
     if cid:
         row = rfm[rfm["customer_unique_id"] == cid]
