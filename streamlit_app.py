@@ -794,7 +794,9 @@ def tab_lookup(d):
     ss = st.session_state
     c1, c2, c3 = st.columns([3, 1.3, 2])
     chosen = c1.selectbox("Bước 2 — chọn mã khách", ids) if ids else ""
-    rnd = c2.button("🎲 Ngẫu nhiên", use_container_width=True)
+    with c2:
+        st.markdown("<div style='height:1.72rem'></div>", unsafe_allow_html=True)
+        rnd = st.button("🎲 Ngẫu nhiên", use_container_width=True)
     manual = c3.text_input("… hoặc dán mã khác", "")
     if rnd and len(pool):
         ss["lookup_cid"] = str(pool["customer_unique_id"].sample(1).iloc[0])
@@ -815,11 +817,28 @@ def tab_lookup(d):
             kpi(cc[1], "", "Frequency", fmt_int(r.get("frequency", 0)), "#2FA36B")
             kpi(cc[2], "", "Monetary", fmt_money(r.get("monetary", 0)), "#2C8C99")
             kpi(cc[3], "", "Đánh giá TB", f'{r.get("avg_review_score", float("nan")):.1f}', "#E0A73E")
+            persona_txt = "—"
             if seg is not None:
                 s = seg[seg["customer_unique_id"] == cid]
                 if not s.empty:
-                    st.success(f"**Phân khúc:** {s.iloc[0].get('persona','?')}  ·  "
+                    persona_txt = s.iloc[0].get("persona", "—")
+                    st.success(f"**Phân khúc:** {persona_txt}  ·  "
                                f"RFM: {r.get('rfm_segment','?')}")
+            seg_name = r.get("rfm_segment", "?")
+            late = r.get("pct_late_delivery")
+            lines = [
+                f"Khách này thuộc chân dung <b>{persona_txt}</b> · phân khúc RFM "
+                f"<b>{seg_name}</b>.",
+                f"Đã mua <b>{fmt_int(r.get('frequency', 0))}</b> đơn, tổng chi tiêu "
+                f"<b>{fmt_money(r.get('monetary', 0))}</b> "
+                f"(≈ {fmt_money(r.get('avg_order_value', 0))}/đơn); lần mua gần nhất "
+                f"<b>{fmt_int(r.get('recency_days', 0))} ngày</b> trước; đánh giá TB "
+                f"<b>{r.get('avg_review_score', float('nan')):.1f}/5</b>"
+                + (f"; tỉ lệ giao trễ <b>{late:.0%}</b>" if late == late else "") + ".",
+            ]
+            if SEGMENT_DESC.get(seg_name):
+                lines.append(f"Gợi ý hành động: {SEGMENT_DESC[seg_name]}")
+            note(lines)
             st.dataframe(row.T, use_container_width=True)
 
 
