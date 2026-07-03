@@ -37,6 +37,29 @@ ACCENT = "#0F766E"
 PALETTE = ["#059669", "#0EA5E9", "#F59E0B", "#EF4444", "#8B5CF6",
            "#EC4899", "#14B8A6", "#F97316"]
 
+# Mã bang Brazil (UF) -> tên đầy đủ
+UF_NAMES = {
+    "AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas", "BA": "Bahia",
+    "CE": "Ceará", "DF": "Distrito Federal", "ES": "Espírito Santo", "GO": "Goiás",
+    "MA": "Maranhão", "MT": "Mato Grosso", "MS": "Mato Grosso do Sul",
+    "MG": "Minas Gerais", "PA": "Pará", "PB": "Paraíba", "PR": "Paraná",
+    "PE": "Pernambuco", "PI": "Piauí", "RJ": "Rio de Janeiro",
+    "RN": "Rio Grande do Norte", "RS": "Rio Grande do Sul", "RO": "Rondônia",
+    "RR": "Roraima", "SC": "Santa Catarina", "SP": "São Paulo", "SE": "Sergipe",
+    "TO": "Tocantins",
+}
+
+# Ý nghĩa các phân khúc RFM
+SEGMENT_DESC = {
+    "Champions": "Mua gần đây, thường xuyên và chi nhiều — khách tốt nhất; ưu đãi đặc quyền, giữ chân.",
+    "Loyal Customers": "Mua khá gần đây, tần suất khá — trung thành; có thể upsell/bán chéo.",
+    "Potential Loyalist": "Mới mua, có dấu hiệu tích cực — tiềm năng thành khách trung thành.",
+    "New / Promising": "Khách mới, mua gần đây nhưng mới một lần — nuôi dưỡng để mua lại.",
+    "At Risk": "Từng mua nhiều nhưng lâu chưa quay lại — nguy cơ rời bỏ; chiến dịch win-back.",
+    "Hibernating": "Lâu không mua, tần suất & chi tiêu thấp — đang 'ngủ đông'.",
+    "Lost": "Rất lâu không mua — gần như đã mất; chi phí kích hoạt lại cao.",
+}
+
 st.set_page_config(page_title="Olist · Phân tích khách hàng",
                    page_icon="🛒", layout="wide", initial_sidebar_state="expanded")
 
@@ -360,10 +383,13 @@ def tab_rfm(d):
     df = rfm.copy()
     if seg is not None:
         df = df.merge(seg[["customer_unique_id", "persona"]], on="customer_unique_id", how="left")
-    pick = st.selectbox("Lọc theo bang",
-                        ["(Tất cả)"] + sorted(df["customer_state"].dropna().unique().tolist()))
+    states = ["(Tất cả)"] + sorted(df["customer_state"].dropna().unique().tolist())
+    pick = st.selectbox(
+        "Lọc theo bang (mã bang của Brazil — UF)", states,
+        format_func=lambda s: s if s == "(Tất cả)" else f"{s} — {UF_NAMES.get(s, s)}")
     if pick != "(Tất cả)":
         df = df[df["customer_state"] == pick]
+
     c1, c2 = st.columns(2)
     with c1:
         vc = df["rfm_segment"].value_counts().reset_index()
@@ -378,13 +404,61 @@ def tab_rfm(d):
         if HAS_PX and "monetary" in df.columns:
             fig = px.scatter(df.sample(min(4000, len(df)), random_state=42),
                              x="recency_days", y="monetary", color="rfm_segment",
-                             title="Recency vs Monetary theo phân khúc",
-                             color_discrete_sequence=PALETTE, opacity=0.6)
+                             title="Recency vs Monetary theo phân khúc", opacity=0.6,
+                             color_discrete_sequence=PALETTE,
+                             labels={"recency_days": "Recency – ngày từ lần mua cuối",
+                                     "monetary": "Monetary – tổng chi tiêu (R$)",
+                                     "rfm_segment": "Phân khúc"})
             fig.update_yaxes(type="log")
             st.plotly_chart(style_fig(fig), use_container_width=True)
+
+    note([
+        "<b>Biểu đồ trái</b> (số khách theo phân khúc): phần lớn khách rơi vào "
+        "<b>New/Promising</b> (mới mua, một lần) cùng các nhóm giá trị thấp (Hibernating, "
+        "Lost, Potential Loyalist); nhóm <b>Champions/Loyal Customers rất ít</b> — phản ánh "
+        "đặc thù Olist khách chủ yếu mua một lần.",
+        "<b>Biểu đồ phải</b>: trục X = <b>Recency</b> (số ngày từ lần mua cuối, càng nhỏ càng "
+        "gần đây), trục Y = <b>Monetary</b> (tổng chi tiêu, thang log), màu = phân khúc. Các "
+        "nhóm tách rõ theo recency (New/Promising bên trái, Lost bên phải) còn chi tiêu trải "
+        "đều → <b>recency là yếu tố phân biệt chính</b>.",
+    ])
+
+    section("Ý nghĩa các phân khúc RFM",
+            "RFM = Recency (gần đây) – Frequency (tần suất) – Monetary (chi tiêu)")
+    order = ["Champions", "Loyal Customers", "Potential Loyalist", "New / Promising",
+             "At Risk", "Hibernating", "Lost"]
+    gloss = pd.DataFrame([(s, SEGMENT_DESC[s]) for s in order],
+                         columns=["Phân khúc", "Ý nghĩa & gợi ý hành động"])
+    st.dataframe(gloss, hide_index=True, use_container_width=True)
+
     if prof is not None:
-        section("Chân dung phân khúc (K-Means)")
+        section("Chân dung phân khúc (K-Means)",
+                "Phân cụm khách theo đặc trưng RFM; mỗi cụm là một 'chân dung'")
         st.dataframe(prof, use_container_width=True, hide_index=True)
+        if HAS_PX:
+            pf = prof.copy()
+            pf["Cụm"] = "Cụm " + pf["cluster"].astype(str)
+            fig = px.scatter(pf, x="recency", y="monetary", size="n", color="Cụm",
+                             text="persona", size_max=60, color_discrete_sequence=PALETTE,
+                             title="Bản đồ phân khúc K-Means (kích thước bong bóng = số khách)",
+                             labels={"recency": "Recency TB (ngày)",
+                                     "monetary": "Chi tiêu TB (R$)"})
+            fig.update_traces(textposition="top center")
+            st.plotly_chart(style_fig(fig), use_container_width=True)
+        big = prof.loc[prof["n"].idxmax()]
+        vip = prof.loc[prof["monetary"].idxmax()]
+        low = prof.loc[prof["review"].idxmin()]
+        note([
+            f"K-Means chia khách thành <b>{len(prof)} cụm</b>. Cụm đông nhất khoảng "
+            f"<b>{fmt_int(big['n'])}</b> khách (chân dung: {big['persona']}).",
+            f"Cụm chi tiêu cao nhất (~<b>{vip['monetary']:.0f} R$</b>) là nhóm giá trị nhất — "
+            "ưu tiên giữ chân & bán chéo.",
+            f"Cụm có điểm đánh giá thấp nhất (~<b>{low['review']:.1f}/5</b>) là nhóm khách kém "
+            "hài lòng — cần cải thiện giao hàng/chất lượng để tránh rời bỏ.",
+            "Tần suất mua gần như bằng <b>1</b> ở hầu hết cụm → các cụm khác nhau chủ yếu ở "
+            "<b>mức chi tiêu</b> và <b>độ hài lòng</b>, đúng đặc thù mua một lần của Olist.",
+        ])
+
     st.download_button("⬇️ Tải RFM (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
                        "rfm_filtered.csv", "text/csv")
 
