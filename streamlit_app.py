@@ -366,8 +366,8 @@ thương mại điện tử — RFM, thống kê suy diễn, phân cụm, luật
 SIDEBAR_INFO = """<div class="credit">
 <div class="c-school">Trường Đại học Sư phạm<br>Thành phố Hồ Chí Minh</div>
 <div class="c-dept">Khoa Công nghệ thông tin</div>
-<div class="c-meta">Môn <b>Phân tích dữ liệu</b><br>Khóa 36 (2025–2027) · Năm học 2025–2026</div>
-<div class="c-meta"> <b> Năm học 2025–2026 </b> </div>
+<div class="c-meta">Môn <b>Phân tích dữ liệu</b><br>Khóa 36 (2025–2027)</div>
+<div class="c-meta"> <b> Năm học</b> 2025–2026  </div>
 <div class="c-role">Học viên thực hiện</div>
 <ol class="c-list">
 <li>Tăng Ngọc Phụng — KHMT836027</li>
