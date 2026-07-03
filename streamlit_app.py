@@ -200,17 +200,47 @@ def tab_intro(d):
     kpi(cols[1], "", "Số đơn hàng", n_orders, "#0F766E")
     kpi(cols[2], "", "Giai đoạn", "2016 – 2018", "#0EA5E9")
     kpi(cols[3], "", "Số bảng", "9 bảng", "#F59E0B")
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    st.markdown("""
-Bộ dữ liệu do **Olist** — nền tảng kết nối nhà bán hàng nhỏ với các sàn TMĐT lớn tại
-Brazil — công bố công khai trên Kaggle. Đây là **dữ liệu thương mại thực tế, đã ẩn danh**,
-ghi nhận khoảng **100.000 đơn hàng** giai đoạn **09/2016 – 10/2018**. Dữ liệu gồm
-**9 bảng quan hệ** liên kết qua khóa ngoại, đa kiểu (số, danh mục, thời gian, văn bản
-đánh giá, tọa độ), cho phép quan sát một đơn hàng từ nhiều chiều: trạng thái, giá,
-thanh toán, giao vận, vị trí khách hàng, thuộc tính sản phẩm và đánh giá.
+    st.markdown(
+        "Dữ liệu thương mại **thực tế, đã ẩn danh** của **Olist** (Brazil) — ~**100.000 "
+        "đơn hàng** giai đoạn 09/2016–10/2018, gồm **9 bảng quan hệ** liên kết qua khóa "
+        "ngoại. Nguồn: [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) "
+        "· giấy phép CC BY-NC-SA 4.0.")
 
-> Nguồn: [Kaggle — Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) · Giấy phép CC BY-NC-SA 4.0 (dùng cho mục đích học thuật).
-""")
+    ol = d.get("order_lines_view")
+    if HAS_PX and ov is not None:
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
+            s = ov["order_status"].value_counts().reset_index()
+            s.columns = ["trạng thái", "số đơn"]
+            fig = px.pie(s, names="trạng thái", values="số đơn", hole=.58,
+                         title="Phân bố trạng thái đơn hàng",
+                         color_discrete_sequence=PALETTE)
+            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+        with r1c2:
+            rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
+            rv.columns = ["điểm", "số lượng"]
+            fig = px.bar(rv, x="điểm", y="số lượng", title="Phân bố điểm đánh giá (1–5)",
+                         color="điểm", color_continuous_scale=["#D1FAE5", PRIMARY])
+            fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
+            pt = ov["payment_type_primary"].value_counts().reset_index()
+            pt.columns = ["phương thức", "số đơn"]
+            fig = px.bar(pt, x="số đơn", y="phương thức", orientation="h",
+                         title="Phương thức thanh toán", color_discrete_sequence=[ACCENT])
+            fig.update_layout(yaxis=dict(autorange="reversed"))
+            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+        with r2c2:
+            if ol is not None:
+                tc = ol["category"].value_counts().head(10).reset_index()
+                tc.columns = ["danh mục", "số dòng"]
+                fig = px.bar(tc.sort_values("số dòng"), x="số dòng", y="danh mục",
+                             orientation="h", title="Top 10 danh mục sản phẩm",
+                             color_discrete_sequence=[PRIMARY])
+                st.plotly_chart(style_fig(fig, 300), use_container_width=True)
 
     section("Cấu trúc 9 bảng dữ liệu")
     tables = pd.DataFrame([
