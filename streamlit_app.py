@@ -173,7 +173,9 @@ def style_fig(fig, h=360):
         margin=dict(l=10, r=10, t=54, b=10), colorway=PALETTE,
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         title_font=dict(family="Poppins", size=16, color="#1E2130"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        legend=dict(orientation="v", yanchor="top", y=1, x=1.02, font=dict(size=11),
+                    title_text=""),
+        title=dict(x=0, xanchor="left", pad=dict(b=10)),
     )
     return fig
 
@@ -214,9 +216,11 @@ def tab_intro(d):
         with r1c1:
             s = ov["order_status"].value_counts().reset_index()
             s.columns = ["trạng thái", "số đơn"]
-            fig = px.pie(s, names="trạng thái", values="số đơn", hole=.58,
-                         title="Phân bố trạng thái đơn hàng",
-                         color_discrete_sequence=PALETTE)
+            fig = px.bar(s.sort_values("số đơn"), x="số đơn", y="trạng thái",
+                         orientation="h", title="Trạng thái đơn hàng (thang log)",
+                         text="số đơn", color_discrete_sequence=[PRIMARY])
+            fig.update_xaxes(type="log")
+            fig.update_traces(textposition="outside", cliponaxis=False)
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r1c2:
             rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
