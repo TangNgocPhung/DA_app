@@ -782,12 +782,12 @@ NAV = [("00 · Giới thiệu", "info-circle-fill", tab_intro),
        ("09 · Kết luận", "clipboard-check-fill", tab_conclusion)]
 
 MENU_STYLES = {
-    "container": {"padding": "0", "background-color": "transparent"},
-    "icon": {"color": "#E0A73E", "font-size": "14px"},
+    "container": {"padding": "4px 0", "background-color": "#0E6E63"},
+    "icon": {"color": "#F1B24A", "font-size": "14px"},
     "nav-link": {"font-family": "'IBM Plex Mono', monospace", "font-size": "12.5px",
-                 "font-weight": "500", "text-transform": "uppercase",
-                 "letter-spacing": "0.07em", "color": "#CDE8E2", "text-align": "left",
-                 "margin": "2px 0", "border-radius": "6px", "--hover-color": "#0B5952"},
+                 "font-weight": "600", "text-transform": "uppercase",
+                 "letter-spacing": "0.07em", "color": "#F3EFE6", "text-align": "left",
+                 "margin": "2px 0", "border-radius": "6px", "--hover-color": "#0B5A52"},
     "nav-link-selected": {"background-color": "#EF5B4C", "color": "#FFFFFF",
                           "font-weight": "700"},
 }
@@ -823,7 +823,7 @@ def main():
     labels = [n[0] for n in NAV]
 
     with st.sidebar:
-        st.markdown('<div class="brand">Olist<span class="ac">Analytics</span></div>'
+        st.markdown('<div class="brand">Olist <span class="ac">Analytics</span></div>'
                     '<div class="nav-lbl">Navigation</div>', unsafe_allow_html=True)
         if HAS_MENU:
             choice = option_menu(None, labels, icons=[n[1] for n in NAV],
