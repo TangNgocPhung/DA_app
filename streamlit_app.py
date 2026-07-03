@@ -97,6 +97,11 @@ hr { margin: 0.8rem 0; border-color:#E5E9EF; }
 .credit ol.c-list { margin:4px 0 0; padding-left:18px; }
 .credit ol.c-list li { margin:2px 0; }
 .credit .c-gv { font-weight:600; color:#0F172A; margin-top:2px; }
+
+/* Dải quy trình (trang giới thiệu) */
+.pipe { background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; font-weight:600;
+  font-size:.85rem; padding:10px 14px; border-radius:10px; margin:4px 0 14px;
+  line-height:1.7; }
 </style>
 """
 
@@ -184,6 +189,61 @@ def show_fig(name, caption=""):
 # --------------------------------------------------------------------------- #
 # Tabs
 # --------------------------------------------------------------------------- #
+def tab_intro(d):
+    section("Giới thiệu bộ dữ liệu Olist",
+            "Brazilian E-Commerce Public Dataset by Olist — dữ liệu TMĐT thực tế tại Brazil")
+    ov = d.get("orders_view")
+    n_orders = (f"{ov['order_id'].nunique():,}".replace(",", ".")
+                if ov is not None else "~100.000")
+    cols = st.columns(4)
+    kpi(cols[0], "", "Nguồn", "Kaggle · Olist", "#059669")
+    kpi(cols[1], "", "Số đơn hàng", n_orders, "#0F766E")
+    kpi(cols[2], "", "Giai đoạn", "2016 – 2018", "#0EA5E9")
+    kpi(cols[3], "", "Số bảng", "9 bảng", "#F59E0B")
+
+    st.markdown("""
+Bộ dữ liệu do **Olist** — nền tảng kết nối nhà bán hàng nhỏ với các sàn TMĐT lớn tại
+Brazil — công bố công khai trên Kaggle. Đây là **dữ liệu thương mại thực tế, đã ẩn danh**,
+ghi nhận khoảng **100.000 đơn hàng** giai đoạn **09/2016 – 10/2018**. Dữ liệu gồm
+**9 bảng quan hệ** liên kết qua khóa ngoại, đa kiểu (số, danh mục, thời gian, văn bản
+đánh giá, tọa độ), cho phép quan sát một đơn hàng từ nhiều chiều: trạng thái, giá,
+thanh toán, giao vận, vị trí khách hàng, thuộc tính sản phẩm và đánh giá.
+
+> Nguồn: [Kaggle — Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) · Giấy phép CC BY-NC-SA 4.0 (dùng cho mục đích học thuật).
+""")
+
+    section("Cấu trúc 9 bảng dữ liệu")
+    tables = pd.DataFrame([
+        ("olist_customers_dataset", "Khách hàng", "customer_id, customer_unique_id, mã bưu chính, thành phố, bang"),
+        ("olist_orders_dataset", "Đơn hàng", "trạng thái đơn + mốc thời gian (đặt, duyệt, giao, dự kiến)"),
+        ("olist_order_items_dataset", "Dòng đơn", "sản phẩm, người bán, giá bán, phí vận chuyển"),
+        ("olist_products_dataset", "Sản phẩm", "danh mục, kích thước, trọng lượng, số ảnh"),
+        ("olist_sellers_dataset", "Người bán", "mã bưu chính, thành phố, bang"),
+        ("olist_order_payments_dataset", "Thanh toán", "phương thức, số kỳ trả góp, giá trị"),
+        ("olist_order_reviews_dataset", "Đánh giá", "điểm 1–5, tiêu đề/bình luận, thời gian"),
+        ("olist_geolocation_dataset", "Tọa độ địa lý", "vĩ độ/kinh độ theo tiền tố mã bưu chính"),
+        ("product_category_name_translation", "Dịch danh mục", "tên danh mục: Bồ Đào Nha → tiếng Anh"),
+    ], columns=["Bảng (CSV)", "Nội dung", "Cột chính"])
+    st.dataframe(tables, hide_index=True, use_container_width=True)
+
+    section("Phương pháp & thuật toán phân tích",
+            "Quy trình xử lý và kỹ thuật áp dụng cho từng bước")
+    st.markdown('<div class="pipe">ETL → RFM → Thống kê suy diễn → Phân cụm → '
+                'Luật kết hợp → Machine Learning → Deep Learning → Dashboard</div>',
+                unsafe_allow_html=True)
+    methods = pd.DataFrame([
+        ("1. Làm sạch & hợp nhất (ETL)", "Chuẩn hóa kiểu, khử trùng lặp, gộp đa bảng theo khóa ngoại; tạo 3 view (khách hàng/đơn/dòng đơn)", "pandas, pyarrow"),
+        ("2. Đặc trưng RFM", "Recency – Frequency – Monetary + đặc trưng mở rộng; chấm điểm ngũ phân vị & gán nhãn phân khúc", "pandas, numpy"),
+        ("3. Thống kê suy diễn", "Chi-square, ANOVA, t-test (+ Kruskal-Wallis, Mann-Whitney, Spearman); effect size + hiệu chỉnh Holm", "scipy, statsmodels"),
+        ("4. Phân khúc khách hàng", "Phân cụm K-Means; chọn k bằng Silhouette / Davies-Bouldin / Calinski-Harabasz; trực quan PCA", "scikit-learn"),
+        ("5. Luật kết hợp", "Khai phá luật kết hợp FP-Growth (support – confidence – lift)", "mlxtend"),
+        ("6. Machine Learning", "Logistic Regression, Random Forest, XGBoost, LightGBM; đánh giá ROC-AUC / PR-AUC / F1; giải thích SHAP", "scikit-learn, xgboost, lightgbm, shap"),
+        ("7. Deep Learning", "Mạng nơ-ron nhiều lớp (MLP) dự đoán mức độ hài lòng", "TensorFlow / Keras"),
+        ("8. Trực quan hóa", "Dashboard tương tác trình bày toàn bộ kết quả", "streamlit, plotly"),
+    ], columns=["Bước", "Kỹ thuật / Thuật toán", "Thư viện"])
+    st.dataframe(methods, hide_index=True, use_container_width=True)
+
+
 def tab_overview(d):
     ov, cv = d["orders_view"], d["customers_view"]
     if ov is None or cv is None:
@@ -339,7 +399,8 @@ def tab_lookup(d):
 
 
 # --------------------------------------------------------------------------- #
-NAV = [("Tổng quan", "bar-chart-fill", tab_overview),
+NAV = [("Giới thiệu", "info-circle-fill", tab_intro),
+       ("Tổng quan", "bar-chart-fill", tab_overview),
        ("RFM & Phân khúc", "people-fill", tab_rfm),
        ("Thống kê", "clipboard-data", tab_stats),
        ("Cohort/Thời gian", "graph-up", tab_cohort),
