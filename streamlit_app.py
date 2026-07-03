@@ -746,21 +746,43 @@ def tab_conclusion(d):
 
 def tab_lookup(d):
     rfm, seg = d["rfm_features"], d["customer_segments"]
-    section("Tra cứu khách hàng", "Nhập mã khách để xem hồ sơ & phân khúc")
+    section("Tra cứu khách hàng",
+            "Chọn một khách tiêu biểu từ danh sách (đã có sẵn mã), hoặc nhập mã để xem hồ sơ")
     if rfm is None:
         st.warning("Thiếu rfm_features."); return
-    cid = st.text_input("customer_unique_id", placeholder="vd: 0000366f3b9a7992bf8c76cfdf3221e2")
+    df = rfm.copy()
+    if seg is not None:
+        df = df.merge(seg[["customer_unique_id", "persona"]], on="customer_unique_id", how="left")
+
+    segs = ["(Tất cả)"] + sorted(df["rfm_segment"].dropna().unique().tolist())
+    pick_seg = st.selectbox("Bước 1 — chọn phân khúc để thu hẹp", segs)
+    pool = df if pick_seg == "(Tất cả)" else df[df["rfm_segment"] == pick_seg]
+
+    cols_show = [c for c in ["customer_unique_id", "recency_days", "frequency", "monetary",
+                             "avg_review_score", "rfm_segment", "persona"] if c in pool.columns]
+    sample = pool.sort_values("monetary", ascending=False).head(15)[cols_show]
+    st.caption(f"{len(pool):,} khách trong nhóm — 15 khách chi tiêu cao nhất "
+               "(cột **customer_unique_id** là mã cần dùng):")
+    st.dataframe(sample, hide_index=True, use_container_width=True)
+
+    ids = sample["customer_unique_id"].tolist()
+    c1, c2 = st.columns([3, 2])
+    chosen = c1.selectbox("Bước 2 — chọn mã khách", ids) if ids else ""
+    manual = c2.text_input("… hoặc dán mã khác", "")
+    cid = manual.strip() or chosen
+
     if cid:
         row = rfm[rfm["customer_unique_id"] == cid]
         if row.empty:
-            st.error("Không tìm thấy khách hàng.")
+            st.error("Không tìm thấy khách hàng với mã này.")
         else:
             r = row.iloc[0]
-            cols = st.columns(4)
-            kpi(cols[0], "🕒", "Recency (ngày)", fmt_int(r.get("recency_days", 0)), "#059669")
-            kpi(cols[1], "🔁", "Frequency", fmt_int(r.get("frequency", 0)), "#0F766E")
-            kpi(cols[2], "💰", "Monetary", fmt_money(r.get("monetary", 0)), "#0EA5E9")
-            kpi(cols[3], "⭐", "Đánh giá TB", f'{r.get("avg_review_score", float("nan")):.1f}', "#F59E0B")
+            st.markdown(f"**Hồ sơ khách:** `{cid}`")
+            cc = st.columns(4)
+            kpi(cc[0], "", "Recency (ngày)", fmt_int(r.get("recency_days", 0)), "#EF5B4C")
+            kpi(cc[1], "", "Frequency", fmt_int(r.get("frequency", 0)), "#2FA36B")
+            kpi(cc[2], "", "Monetary", fmt_money(r.get("monetary", 0)), "#2C8C99")
+            kpi(cc[3], "", "Đánh giá TB", f'{r.get("avg_review_score", float("nan")):.1f}', "#E0A73E")
             if seg is not None:
                 s = seg[seg["customer_unique_id"] == cid]
                 if not s.empty:
