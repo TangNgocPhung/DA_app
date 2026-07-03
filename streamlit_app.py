@@ -60,6 +60,19 @@ SEGMENT_DESC = {
     "Lost": "Rất lâu không mua — gần như đã mất; chi phí kích hoạt lại cao.",
 }
 
+REGIONS = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
+
+# Tọa độ tâm (lat, lon) các bang Brazil — cho bản đồ bong bóng
+STATE_CENTROIDS = {
+    "AC": (-9.0, -70.5), "AL": (-9.6, -36.6), "AP": (1.4, -51.8), "AM": (-3.9, -63.0),
+    "BA": (-12.5, -41.7), "CE": (-5.2, -39.6), "DF": (-15.8, -47.9), "ES": (-19.6, -40.3),
+    "GO": (-15.9, -49.6), "MA": (-5.0, -45.3), "MT": (-12.6, -55.9), "MS": (-20.5, -54.5),
+    "MG": (-18.5, -44.5), "PA": (-4.0, -52.9), "PB": (-7.1, -36.7), "PR": (-24.8, -51.5),
+    "PE": (-8.4, -37.9), "PI": (-7.7, -42.7), "RJ": (-22.2, -42.7), "RN": (-5.8, -36.6),
+    "RS": (-30.0, -53.5), "RO": (-10.8, -63.3), "RR": (2.1, -61.4), "SC": (-27.3, -50.4),
+    "SP": (-22.2, -48.6), "SE": (-10.6, -37.4), "TO": (-10.2, -48.3),
+}
+
 st.set_page_config(page_title="Olist · Phân tích khách hàng",
                    page_icon="🛒", layout="wide", initial_sidebar_state="expanded")
 
@@ -223,6 +236,33 @@ def show_fig(name, caption=""):
         st.image(str(p), caption=caption, use_container_width=True)
     else:
         st.caption(f"— (chưa có biểu đồ {name})")
+
+
+def apply_filters(d, regions, dr):
+    """Lọc theo vùng miền + khoảng thời gian qua orders_view rồi lan sang các bảng."""
+    ov = d.get("orders_view")
+    if ov is None:
+        return d
+    m = pd.Series(True, index=ov.index)
+    if regions:
+        m &= ov["region"].isin(regions)
+    if dr and len(dr) == 2 and dr[0] and dr[1]:
+        ts = pd.to_datetime(ov["order_purchase_timestamp"]).dt.date
+        m &= (ts >= dr[0]) & (ts <= dr[1])
+    ovf = ov[m]
+    if len(ovf) == 0 or len(ovf) == len(ov):
+        return d  # rỗng hoặc không thay đổi -> giữ nguyên
+    out = dict(d)
+    out["orders_view"] = ovf
+    oids, cids = set(ovf["order_id"]), set(ovf["customer_unique_id"])
+    ol = d.get("order_lines_view")
+    if ol is not None:
+        out["order_lines_view"] = ol[ol["order_id"].isin(oids)]
+    for k in ("customers_view", "rfm_features"):
+        t = d.get(k)
+        if t is not None and "customer_unique_id" in t.columns:
+            out[k] = t[t["customer_unique_id"].isin(cids)]
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -469,28 +509,102 @@ def tab_stats(d):
         st.warning("Thiếu stat_results."); return
     section("Kiểm định thống kê — 8 giả thuyết",
             "Mỗi giả thuyết dùng kiểm định tham số (ANOVA/t-test/Chi-square) và phi-tham số")
-    st.dataframe(sr, use_container_width=True, hide_index=True)
+
+    def fp(p):
+        p = pd.to_numeric(p, errors="coerce")
+        if pd.isna(p):
+            return ""
+        return "< 0.0001" if p < 1e-4 else f"{p:.4f}"
+
+    disp = sr.copy()
+    for c in ["p_param", "p_nonparam", "p_holm", "levene_p"]:
+        if c in disp:
+            disp[c] = disp[c].map(fp)
+    for c in ["es_param", "es_nonparam"]:
+        if c in disp:
+            disp[c] = pd.to_numeric(disp[c], errors="coerce").round(3)
+    st.dataframe(disp, use_container_width=True, hide_index=True)
     st.markdown('<span class="small-note">p_holm &lt; 0.05 ⇒ có ý nghĩa thống kê. '
-                'effect size cho biết độ mạnh của mối liên hệ.</span>', unsafe_allow_html=True)
-    st.write("")
-    show_fig("07_tuong_quan", "Ma trận tương quan giữa các biến số")
+                'effect size cho biết độ mạnh mối liên hệ (không phụ thuộc cỡ mẫu).</span>',
+                unsafe_allow_html=True)
+
+    # Biểu đồ độ mạnh effect size
+    eff = sr.copy()
+    eff["effect"] = pd.to_numeric(eff["es_nonparam"], errors="coerce")
+    eff["effect"] = eff["effect"].fillna(pd.to_numeric(eff["es_param"], errors="coerce")).abs()
+    eff["Ý nghĩa"] = (pd.to_numeric(eff["p_holm"], errors="coerce") < 0.05).map(
+        {True: "Có ý nghĩa", False: "Không"})
+    if HAS_PX:
+        fig = px.bar(eff.sort_values("effect"), x="effect", y="id", orientation="h",
+                     color="Ý nghĩa", text="effect", hover_data=["giả thuyết"],
+                     color_discrete_map={"Có ý nghĩa": "#059669", "Không": "#94A3B8"},
+                     title="Độ mạnh mối liên hệ (effect size) theo giả thuyết",
+                     labels={"effect": "Effect size (|giá trị|)", "id": "Giả thuyết"})
+        fig.update_traces(texttemplate="%{text:.3f}", textposition="outside", cliponaxis=False)
+        st.plotly_chart(style_fig(fig), use_container_width=True)
+
+    n_sig = int((pd.to_numeric(sr["p_holm"], errors="coerce") < 0.05).sum())
+    strong = eff.loc[eff["effect"].idxmax()]
+    note([
+        f"<b>{n_sig}/{len(sr)}</b> giả thuyết có ý nghĩa thống kê (p_holm &lt; 0.05). Do cỡ mẫu "
+        "rất lớn (~100K), gần như mọi p-value đều cực nhỏ ⇒ <b>phải đọc effect size</b> để biết "
+        "mối liên hệ mạnh hay yếu, không chỉ nhìn p-value.",
+        f"Mối liên hệ <b>mạnh nhất</b>: <b>{strong['id']} — {strong['giả thuyết']}</b> "
+        f"(effect size ≈ {strong['effect']:.3f}).",
+        "Phần lớn effect size ở mức <b>nhỏ</b> → có khác biệt thật nhưng độ lớn khiêm tốn; "
+        "cần thận trọng khi suy ra hành động nghiệp vụ.",
+    ])
+
+    section("Tương quan giữa các biến số")
+    show_fig("07_tuong_quan", "Ma trận tương quan (đơn đã giao)")
+    note([
+        "<b>order_value ≈ items_price_total</b> (hệ số 1.00): doanh thu đơn = giá hàng + phí "
+        "ship nên hai biến gần như trùng nhau (đa cộng tuyến — tránh dùng đồng thời trong mô "
+        "hình tuyến tính).",
+        "<b>Thời gian giao (delivery_days) tương quan ÂM với điểm đánh giá (−0.33)</b> — rõ "
+        "nhất: <b>giao càng lâu, khách đánh giá càng thấp</b>; đây là đòn bẩy quan trọng để "
+        "tăng mức độ hài lòng.",
+        "Đơn nhiều mặt hàng gắn với đánh giá thấp hơn một chút (−0.12); các biến còn lại tương "
+        "quan yếu với điểm đánh giá.",
+    ])
 
 
 def tab_cohort(d):
-    section("Cohort & Chuỗi thời gian", "Xu hướng doanh thu và tỉ lệ giữ chân khách")
+    section("Cohort & Chuỗi thời gian", "Xu hướng theo tháng và tỉ lệ giữ chân khách")
+    ov = d.get("orders_view")
+    if ov is not None and HAS_PX:
+        deliv = ov[ov["order_status"] == "delivered"]
+        m = (deliv.assign(month=pd.to_datetime(deliv["order_purchase_timestamp"])
+                          .dt.to_period("M").dt.to_timestamp())
+             .groupby("month").agg(so_don=("order_id", "nunique")).reset_index())
+        fig = px.bar(m, x="month", y="so_don", title="Số đơn theo tháng",
+                     labels={"month": "Tháng", "so_don": "Số đơn"},
+                     color_discrete_sequence=[PRIMARY])
+        st.plotly_chart(style_fig(fig), use_container_width=True)
     c1, c2 = st.columns(2)
     with c1:
         show_fig("02_xu_huong_thang", "Số đơn & doanh thu theo tháng")
     with c2:
-        show_fig("10_cohort", "Cohort retention")
+        show_fig("10_cohort", "Cohort retention (tỉ lệ quay lại theo tháng)")
+    note([
+        "Lượng đơn <b>tăng nhanh từ 2017</b> và duy trì mức cao trong 2018 — giai đoạn Olist "
+        "mở rộng mạnh.",
+        "Ma trận cohort cho thấy <b>tỉ lệ quay lại rất thấp</b> (các ô sau tháng 0 gần như trống) "
+        "→ khách gần như chỉ mua một lần; giữ chân là bài toán trọng tâm.",
+        "Gợi ý: email/ưu đãi sau mua lần đầu và chương trình loyalty để kéo cohort quay lại.",
+    ])
 
 
 def tab_assoc(d):
     ar = d["assoc_rules"]
     section("Luật kết hợp giữa các danh mục", "Gợi ý bán chéo dựa trên hành vi mua kèm")
+    st.markdown('<span class="small-note"><b>Support</b>: tỉ lệ giỏ chứa cả A và B · '
+                '<b>Confidence</b>: xác suất mua B khi đã mua A · '
+                '<b>Lift &gt; 1</b>: A và B đi cùng nhau nhiều hơn ngẫu nhiên.</span>',
+                unsafe_allow_html=True)
     if ar is None or ar.empty:
-        st.info("Giỏ hàng Olist rất thưa (đa số 1 danh mục/đơn) nên ít luật — "
-                "đây cũng là một phát hiện đáng chú ý.")
+        st.info("Giỏ hàng Olist rất thưa (đa số 1 danh mục/đơn) nên ít/không có luật — "
+                "bản thân điều này là một phát hiện: khách ít mua kèm chéo danh mục.")
         return
     c = st.columns(2)
     lift = c[0].slider("Lift tối thiểu", 1.0, float(max(2.0, ar["lift"].max())), 1.0, 0.1)
@@ -503,6 +617,17 @@ def tab_assoc(d):
                          title="Support – Confidence – Lift",
                          color_continuous_scale=["#D1FAE5", PRIMARY])
         st.plotly_chart(style_fig(fig), use_container_width=True)
+    lines = [
+        f"Tìm được <b>{len(ar)}</b> luật có lift &gt; 1 — số lượng ít, đúng đặc thù giỏ hàng "
+        "Olist rất thưa.",
+        "Cặp có <b>lift cao</b> là ứng viên <b>bán chéo</b>: khi khách mua nhóm A, gợi ý kèm nhóm B.",
+        "Đây là quan hệ <b>tương quan</b>, không phải nhân quả — nên A/B test trước khi triển khai.",
+    ]
+    if len(f):
+        top = f.iloc[0]
+        lines.insert(1, f"Luật mạnh nhất: <b>{top['antecedents']} → {top['consequents']}</b> "
+                        f"(lift ≈ {top['lift']:.2f}).")
+    note(lines)
 
 
 def tab_models(d):
@@ -510,6 +635,13 @@ def tab_models(d):
     section("Mô hình dự đoán", "Machine Learning (4 mô hình) + Deep Learning; nhấn PR-AUC")
     if mm is not None:
         st.dataframe(mm, use_container_width=True, hide_index=True)
+        if HAS_PX and {"level_0", "level_1", "PR_AUC"}.issubset(mm.columns):
+            fig = px.bar(mm, x="level_1", y="PR_AUC", color="level_0", barmode="group",
+                         title="PR-AUC theo mô hình & bài toán",
+                         color_discrete_sequence=PALETTE,
+                         labels={"level_1": "Mô hình", "PR_AUC": "PR-AUC",
+                                 "level_0": "Bài toán"})
+            st.plotly_chart(style_fig(fig), use_container_width=True)
     c1, c2 = st.columns(2)
     with c1:
         show_fig("13_ml_hailong", "ROC & PR — Dự đoán hài lòng")
@@ -518,6 +650,96 @@ def tab_models(d):
         show_fig("13_ml_mualai", "ROC & PR — Dự đoán mua lại")
         show_fig("15_dl_duong_hoc", "Deep Learning — đường học")
     show_fig("16_so_sanh_mo_hinh", "So sánh ML vs Deep Learning")
+    note([
+        "<b>Dự đoán hài lòng</b> đạt PR-AUC cao (~0.85–0.9) — dự báo tốt khách hài lòng "
+        "(lớp dương ~78%); yếu tố quan trọng nhất là <b>thời gian giao & giao trễ</b> (xem SHAP).",
+        "<b>Dự đoán mua lại</b> rất khó: PR-AUC thấp (~0.02–0.03) do <b>mất cân bằng nặng</b> "
+        "(~3% mua lại) và tín hiệu yếu từ đơn đầu — khớp kết luận 'khách mua một lần'.",
+        "Gradient boosting (LightGBM/XGBoost) và mạng nơ-ron cho kết quả tương đương; với dữ "
+        "liệu bảng cỡ này, <b>boosting là lựa chọn hợp lý</b> (nhanh, dễ giải thích bằng SHAP).",
+    ])
+
+
+def tab_geo(d):
+    section("Bản đồ địa lý theo bang",
+            "Doanh thu (kích thước bong bóng) & mức hài lòng (màu) theo bang Brazil")
+    ov = d.get("orders_view")
+    if ov is None:
+        st.warning("Thiếu orders_view."); return
+    deliv = ov[ov["order_status"] == "delivered"]
+    g = deliv.groupby("customer_state").agg(
+        doanh_thu=("order_value", "sum"), so_don=("order_id", "nunique"),
+        danh_gia=("review_score", "mean")).reset_index()
+    g["lat"] = g["customer_state"].map(lambda s: STATE_CENTROIDS.get(s, (None, None))[0])
+    g["lon"] = g["customer_state"].map(lambda s: STATE_CENTROIDS.get(s, (None, None))[1])
+    g["Bang"] = g["customer_state"].map(lambda s: f"{s} — {UF_NAMES.get(s, s)}")
+    g = g.dropna(subset=["lat", "lon"])
+    if HAS_PX and len(g):
+        fig = px.scatter_geo(
+            g, lat="lat", lon="lon", size="doanh_thu", color="danh_gia",
+            hover_name="Bang", size_max=45, color_continuous_scale="RdYlGn",
+            hover_data={"doanh_thu": ":,.0f", "so_don": ":,", "danh_gia": ":.2f",
+                        "lat": False, "lon": False},
+            title="Doanh thu & điểm đánh giá TB theo bang")
+        fig.update_geos(scope="south america", showcountries=True,
+                        landcolor="#F1F5F9", fitbounds="locations")
+        st.plotly_chart(style_fig(fig, 480), use_container_width=True)
+    tbl = g[["Bang", "doanh_thu", "so_don", "danh_gia"]].sort_values(
+        "doanh_thu", ascending=False).round({"danh_gia": 2})
+    st.dataframe(tbl, hide_index=True, use_container_width=True)
+    tot = g["doanh_thu"].sum()
+    note([
+        f"<b>{g.sort_values('doanh_thu', ascending=False).iloc[0]['Bang']}</b> đóng góp lớn "
+        f"nhất (~{g['doanh_thu'].max()/tot:.0%} doanh thu) — thị trường tập trung ở vùng "
+        "Đông Nam (SP, RJ, MG).",
+        "Các bang phía Bắc/Đông Bắc có doanh thu thấp và thường <b>điểm đánh giá thấp hơn</b> "
+        "(màu ngả đỏ) — có thể do khoảng cách giao hàng xa hơn.",
+        "Gợi ý: tối ưu logistics cho vùng xa để cải thiện hài lòng & mở rộng thị phần.",
+    ])
+
+
+def tab_conclusion(d):
+    section("Kết luận & Khuyến nghị", "Tổng hợp phát hiện chính và đề xuất hành động")
+    ov, cv = d.get("orders_view"), d.get("customers_view")
+    repeat = f"{cv['is_repeat_buyer'].mean():.1%}" if cv is not None else "~3%"
+    st.markdown("#### 🔑 Kết luận chính")
+    note([
+        "Olist <b>tăng trưởng mạnh</b> 2017–2018 nhưng doanh thu tập trung ở vùng <b>Đông Nam "
+        "Brazil</b> (SP dẫn đầu áp đảo).",
+        f"Khách <b>chủ yếu mua một lần</b> (tỉ lệ mua lại chỉ {repeat}) — cơ hội lớn cho giữ chân.",
+        "<b>Thời gian giao hàng</b> là yếu tố ảnh hưởng mạnh nhất tới mức hài lòng "
+        "(tương quan −0.33; nổi bật trong SHAP) → đòn bẩy chính để tăng đánh giá.",
+        "Giỏ hàng thưa → ít mua kèm chéo; mô hình dự đoán hài lòng tốt, dự đoán mua lại khó "
+        "do mất cân bằng nặng.",
+    ])
+
+    section("Khuyến nghị theo phân khúc khách hàng")
+    rec = pd.DataFrame([
+        ("Champions / VIP", "Ưu đãi đặc quyền, chăm sóc riêng, giữ chân & bán chéo cao cấp."),
+        ("Loyal / Potential Loyalist", "Chương trình tích điểm, upsell theo sở thích."),
+        ("New / Promising", "Email chào mừng + ưu đãi lần mua thứ 2, cá nhân hóa gợi ý."),
+        ("At Risk / Hibernating", "Chiến dịch win-back: voucher, nhắc nhở, sản phẩm phù hợp."),
+        ("Lost", "Kích hoạt lại có chọn lọc (chi phí thấp) hoặc chấp nhận rời bỏ."),
+    ], columns=["Phân khúc", "Đề xuất hành động"])
+    st.dataframe(rec, hide_index=True, use_container_width=True)
+
+    section("Khuyến nghị vận hành & kinh doanh")
+    note([
+        "<b>Cải thiện logistics</b> (rút ngắn thời gian giao, giảm giao trễ) — tác động lớn "
+        "nhất tới hài lòng, đặc biệt ở vùng xa.",
+        "<b>Bán chéo</b> theo các luật kết hợp có lift cao; thử nghiệm gợi ý sản phẩm kèm.",
+        "<b>Giữ chân</b>: xây chương trình loyalty & tự động hóa email sau mua để tăng mua lại.",
+        "Tập trung nguồn lực marketing ở Đông Nam nhưng <b>mở rộng có chọn lọc</b> sang vùng "
+        "tiềm năng khác.",
+    ])
+
+    section("Hạn chế & hướng phát triển")
+    note([
+        "Dữ liệu một thị trường (Brazil) và một giai đoạn (2016–2018); tỉ lệ mua lại thấp gây "
+        "khó cho mô hình repurchase.",
+        "Hướng phát triển: thêm dữ liệu hành vi duyệt web, mô hình CLV/churn, hệ gợi ý sản phẩm, "
+        "và cập nhật dữ liệu theo thời gian thực.",
+    ])
 
 
 def tab_lookup(d):
@@ -551,9 +773,11 @@ NAV = [("Giới thiệu", "info-circle-fill", tab_intro),
        ("RFM & Phân khúc", "people-fill", tab_rfm),
        ("Thống kê", "clipboard-data", tab_stats),
        ("Cohort/Thời gian", "graph-up", tab_cohort),
+       ("Địa lý", "geo-alt-fill", tab_geo),
        ("Luật kết hợp", "link-45deg", tab_assoc),
        ("Mô hình", "cpu-fill", tab_models),
-       ("Tra cứu KH", "search", tab_lookup)]
+       ("Tra cứu KH", "search", tab_lookup),
+       ("Kết luận", "clipboard-check-fill", tab_conclusion)]
 
 MENU_STYLES = {
     "container": {"padding": "0", "background-color": "transparent"},
@@ -599,8 +823,6 @@ def main():
                                  default_index=0, styles=MENU_STYLES)
         else:
             choice = st.radio("Điều hướng", labels, label_visibility="collapsed")
-        st.markdown("---")
-        st.markdown(SIDEBAR_INFO, unsafe_allow_html=True)
 
     detected = auto_root()
     root = detected if detected else Path("outputs")
@@ -615,7 +837,26 @@ def main():
         st.code("\n".join(str(p / "data") for p in candidate_roots()))
         return
 
-    d = load_all(str(root / "data"))
+    d0 = load_all(str(root / "data"))
+
+    # --- Bộ lọc toàn cục ---
+    regions, dr = [], None
+    ov0 = d0.get("orders_view")
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("##### 🔎 Bộ lọc")
+        regions = st.multiselect("Vùng miền", REGIONS, placeholder="Tất cả vùng")
+        if ov0 is not None:
+            ts = pd.to_datetime(ov0["order_purchase_timestamp"]).dt.date.dropna()
+            dmin, dmax = ts.min(), ts.max()
+            dr = st.date_input("Khoảng thời gian", (dmin, dmax),
+                               min_value=dmin, max_value=dmax)
+        st.caption("Áp cho: Tổng quan · RFM · Địa lý · Cohort · Tra cứu. "
+                   "Thống kê / Luật kết hợp / Mô hình dùng dữ liệu toàn bộ.")
+        st.markdown("---")
+        st.markdown(SIDEBAR_INFO, unsafe_allow_html=True)
+
+    d = apply_filters(d0, regions, dr)
     fn = {n[0]: n[2] for n in NAV}[choice]
     fn(d)
 
