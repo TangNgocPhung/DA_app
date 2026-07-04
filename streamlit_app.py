@@ -111,7 +111,7 @@ header[data-testid="stHeader"] { background:transparent; }
 
 /* ===== Section ===== */
 .sec { border-top:2px solid #1B3A4B; padding-top:8px; margin:22px 0 8px; }
-.sec h3 { font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.12em;
+.sec h3 { font-family:'IBM Plex Mono',monospace; letter-spacing:.06em;
   font-size:.92rem; font-weight:600; color:#1B3A4B; margin:0; }
 .sec p { color:#9A8C74; font-size:.84rem; margin:4px 0 0; }
 
@@ -459,7 +459,10 @@ def tab_intro(d):
         fig.update_layout(height=430, font_family="Inter",
                           polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
                           paper_bgcolor="rgba(0,0,0,0)",
-                          legend=dict(orientation="h", y=-0.1))
+                          margin=dict(l=10, r=170, t=10, b=10),
+                          legend=dict(orientation="v", yanchor="middle", y=0.5,
+                                      xanchor="left", x=1.03, font=dict(size=11),
+                                      title_text=""))
         st.plotly_chart(fig, use_container_width=True)
 
 
