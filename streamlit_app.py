@@ -362,10 +362,10 @@ def tab_intro(d):
         r1c1, r1c2 = st.columns(2)
         with r1c1:
             s = ov["order_status"].value_counts().reset_index()
-            s.columns = ["trạng thái", "số đơn"]
-            fig = px.bar(s.sort_values("số đơn"), x="số đơn", y="trạng thái",
+            s.columns = ["Trạng thái", "Số đơn"]
+            fig = px.bar(s.sort_values("Số đơn"), x="Số đơn", y="Trạng thái",
                          orientation="h", title="Trạng thái đơn hàng (thang log)",
-                         text="số đơn", color="trạng thái",
+                         text="Số đơn", color="Trạng thái",
                          color_discrete_sequence=PALETTE)
             fig.update_xaxes(type="log")
             fig.update_traces(textposition="outside", cliponaxis=False)
@@ -373,10 +373,10 @@ def tab_intro(d):
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r1c2:
             rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
-            rv.columns = ["điểm", "số lượng"]
-            rv["điểm"] = rv["điểm"].astype(str)
-            fig = px.bar(rv, x="điểm", y="số lượng", title="Phân bố điểm đánh giá (1–5)",
-                         color="điểm", color_discrete_map={
+            rv.columns = ["Điểm", "Số lượng"]
+            rv["Điểm"] = rv["Điểm"].astype(str)
+            fig = px.bar(rv, x="Điểm", y="số lượng", title="Phân bố điểm đánh giá (1–5)",
+                         color="Điểm", color_discrete_map={
                              "1": "#EF4444", "2": "#F97316", "3": "#F59E0B",
                              "4": "#34D399", "5": "#059669"})
             fig.update_layout(showlegend=False)
@@ -384,19 +384,19 @@ def tab_intro(d):
         r2c1, r2c2 = st.columns(2)
         with r2c1:
             pt = ov["payment_type_primary"].value_counts().reset_index()
-            pt.columns = ["phương thức", "số đơn"]
-            fig = px.bar(pt, x="số đơn", y="phương thức", orientation="h",
-                         title="Phương thức thanh toán", color="phương thức",
+            pt.columns = ["Phương thức", "Số đơn"]
+            fig = px.bar(pt, x="Số đơn", y="Phương thức", orientation="h",
+                         title="Phương thức thanh toán", color="Phương thức",
                          color_discrete_sequence=PALETTE)
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r2c2:
             if ol is not None:
                 tc = ol["category"].value_counts().head(10).reset_index()
-                tc.columns = ["danh mục", "số dòng"]
-                fig = px.bar(tc.sort_values("số dòng"), x="số dòng", y="danh mục",
+                tc.columns = ["Danh mục", "Số dòng"]
+                fig = px.bar(tc.sort_values("Số dòng"), x="Số dòng", y="Danh mục",
                              orientation="h", title="Top 10 danh mục sản phẩm",
-                             color="danh mục", color_discrete_sequence=PALETTE)
+                             color="Danh mục", color_discrete_sequence=PALETTE)
                 fig.update_layout(showlegend=False)
                 st.plotly_chart(style_fig(fig, 300), use_container_width=True)
 
@@ -546,9 +546,9 @@ def tab_rfm(d):
     c1, c2 = st.columns(2)
     with c1:
         vc = df["rfm_segment"].value_counts().reset_index()
-        vc.columns = ["phân khúc", "số khách"]
+        vc.columns = ["Phân khúc", "Số khách"]
         if HAS_PX:
-            fig = px.bar(vc.sort_values("số khách"), x="số khách", y="phân khúc",
+            fig = px.bar(vc.sort_values("số khách"), x="Số khách", y="Phân khúc",
                          orientation="h", title="Số khách theo phân khúc RFM",
                          color="phân khúc", color_discrete_sequence=PALETTE)
             fig.update_layout(showlegend=False)
