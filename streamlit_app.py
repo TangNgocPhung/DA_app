@@ -373,10 +373,10 @@ def tab_intro(d):
             st.plotly_chart(style_fig(fig, 300), use_container_width=True)
         with r1c2:
             rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
-            rv.columns = ["điểm", "số lượng"]
-            rv["điểm"] = rv["điểm"].astype(str)
+            rv.columns = ["Điểm", "Số lượng"]
+            rv["Điểm"] = rv["Điểm"].astype(str)
             fig = px.bar(rv, x="Điểm", y="Số lượng", title="Phân bố điểm đánh giá (1–5)",
-                         color="điểm", color_discrete_map={
+                         color="Điểm", color_discrete_map={
                              "1": "#EF4444", "2": "#F97316", "3": "#F59E0B",
                              "4": "#34D399", "5": "#059669"})
             fig.update_layout(showlegend=False)
@@ -546,11 +546,11 @@ def tab_rfm(d):
     c1, c2 = st.columns(2)
     with c1:
         vc = df["rfm_segment"].value_counts().reset_index()
-        vc.columns = ["phân khúc", "số khách"]
+        vc.columns = ["Phân khúc", "Số khách"]
         if HAS_PX:
-            fig = px.bar(vc.sort_values("số khách"), x="Số khách", y="Phân khúc",
+            fig = px.bar(vc.sort_values("Số khách"), x="Số khách", y="Phân khúc",
                          orientation="h", title="Số khách theo phân khúc RFM",
-                         color="phân khúc", color_discrete_sequence=PALETTE)
+                         color="Phân khúc", color_discrete_sequence=PALETTE)
             fig.update_layout(showlegend=False)
             st.plotly_chart(style_fig(fig), use_container_width=True)
     with c2:
