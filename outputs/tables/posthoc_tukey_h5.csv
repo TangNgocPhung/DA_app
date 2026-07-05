@@ -1,0 +1,7 @@
+﻿group1,group2,meandiff,p-adj,lower,upper,reject
+boleto,credit_card,21.8076,0.0,17.2535,26.3617,True
+boleto,debit_card,-3.8881,0.9119,-19.0104,11.2341,False
+boleto,voucher,-29.4749,0.0,-40.5305,-18.4192,True
+credit_card,debit_card,-25.6958,0.0,-40.4129,-10.9787,True
+credit_card,voucher,-51.2825,0.0,-61.7772,-40.7878,True
+debit_card,voucher,-25.5867,0.0013,-43.4215,-7.7519,True
