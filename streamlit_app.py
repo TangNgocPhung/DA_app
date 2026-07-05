@@ -28,9 +28,11 @@ except Exception:
 # ---- Cấu hình chung ----
 ARTIFACTS = ["orders_view", "customers_view", "order_lines_view", "rfm_features",
              "stat_results", "customer_segments", "segment_profiles",
-             "assoc_rules", "model_metrics"]
+             "assoc_rules", "model_metrics",
+             "customer_clv", "forecast_monthly"]
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR: Path | None = None
+TABLES_DIR: Path | None = None
 
 PRIMARY = "#2FA36B"   # emerald tươi (biểu đồ đơn sắc)
 ACCENT = "#EF5B4C"    # coral (nhấn)
@@ -293,6 +295,16 @@ def show_fig(name, caption=""):
         st.caption(f"— (chưa có biểu đồ {name})")
 
 
+def load_csv(name: str) -> pd.DataFrame | None:
+    p = (TABLES_DIR / f"{name}.csv") if TABLES_DIR else None
+    if p and p.exists():
+        try:
+            return pd.read_csv(p)
+        except Exception:
+            return None
+    return None
+
+
 def apply_filters(d, regions, dr):
     """Lọc theo vùng miền + khoảng thời gian qua orders_view rồi lan sang các bảng."""
     ov = d.get("orders_view")
@@ -416,18 +428,21 @@ def tab_intro(d):
 
     section("Phương pháp & thuật toán phân tích",
             "Quy trình xử lý và kỹ thuật áp dụng cho từng bước")
-    st.markdown('<div class="pipe">ETL → RFM → Thống kê suy diễn → Phân cụm → '
-                'Luật kết hợp → Machine Learning → Deep Learning → Dashboard</div>',
+    st.markdown('<div class="pipe">ETL → RFM → Thống kê suy diễn (+Tukey) → '
+                'Phân cụm + CLV → Luật kết hợp → Machine Learning (SHAP) → '
+                'Deep Learning → Dự báo → Dashboard</div>',
                 unsafe_allow_html=True)
     methods = pd.DataFrame([
         ("1. Làm sạch & hợp nhất (ETL)", "Chuẩn hóa kiểu, khử trùng lặp, gộp đa bảng theo khóa ngoại; tạo 3 view (khách hàng/đơn/dòng đơn)", "pandas, pyarrow"),
         ("2. Đặc trưng RFM", "Recency – Frequency – Monetary + đặc trưng mở rộng; chấm điểm ngũ phân vị & gán nhãn phân khúc", "pandas, numpy"),
-        ("3. Thống kê suy diễn", "Chi-square, ANOVA, t-test (+ Kruskal-Wallis, Mann-Whitney, Spearman); effect size + hiệu chỉnh Holm", "scipy, statsmodels"),
+        ("3. Thống kê suy diễn", "Chi-square, ANOVA, t-test (+ Kruskal-Wallis, Mann-Whitney, Spearman); effect size + hiệu chỉnh Holm; **Tukey HSD** cho post-hoc ANOVA", "scipy, statsmodels"),
         ("4. Phân khúc khách hàng", "Phân cụm K-Means; chọn k bằng Silhouette / Davies-Bouldin / Calinski-Harabasz; trực quan PCA", "scikit-learn"),
-        ("5. Luật kết hợp", "Khai phá luật kết hợp FP-Growth (support – confidence – lift)", "mlxtend"),
-        ("6. Machine Learning", "Logistic Regression, Random Forest, XGBoost, LightGBM; đánh giá ROC-AUC / PR-AUC / F1; giải thích SHAP", "scikit-learn, xgboost, lightgbm, shap"),
-        ("7. Deep Learning", "Mạng nơ-ron nhiều lớp (MLP) dự đoán mức độ hài lòng", "TensorFlow / Keras"),
-        ("8. Trực quan hóa", "Dashboard tương tác trình bày toàn bộ kết quả", "streamlit, plotly"),
+        ("5. Customer Lifetime Value", "Mô hình **BG/NBD** dự đoán số đơn tương lai + **Gamma-Gamma** dự đoán giá trị đơn → CLV 6 tháng", "lifetimes"),
+        ("6. Luật kết hợp", "Khai phá luật kết hợp FP-Growth (support – confidence – lift)", "mlxtend"),
+        ("7. Machine Learning", "Logistic Regression, Random Forest, XGBoost, LightGBM; đánh giá ROC-AUC / PR-AUC / F1; giải thích **SHAP** cả 2 mục tiêu (hài lòng + mua lại)", "scikit-learn, xgboost, lightgbm, shap"),
+        ("8. Deep Learning", "Mạng nơ-ron nhiều lớp (MLP) dự đoán mức độ hài lòng", "TensorFlow / Keras"),
+        ("9. Dự báo chuỗi thời gian", "Dự báo doanh thu & số đơn 12 tháng — **Prophet** (fallback Holt-Winters)", "prophet, statsmodels"),
+        ("10. Trực quan hóa", "Dashboard tương tác trình bày toàn bộ kết quả", "streamlit, plotly"),
     ], columns=["Bước", "Kỹ thuật / Thuật toán", "Thư viện"])
     st.dataframe(methods, hide_index=True, use_container_width=True)
 
@@ -612,6 +627,45 @@ def tab_rfm(d):
             "<b>mức chi tiêu</b> và <b>độ hài lòng</b>, đúng đặc thù mua một lần của Olist.",
         ])
 
+    clv = d.get("customer_clv")
+    if clv is not None and seg is not None:
+        section("Customer Lifetime Value (CLV) — 6 tháng tới",
+                "Mô hình BG/NBD + Gamma-Gamma dự đoán số đơn 90 ngày và giá trị 6 tháng.")
+        clv_seg = clv.merge(seg[["customer_unique_id", "persona"]],
+                            on="customer_unique_id", how="left")
+        c1, c2 = st.columns((3, 2))
+        with c1:
+            show_fig("17_clv_theo_phankhuc", "CLV trung bình 6 tháng theo phân khúc")
+        with c2:
+            summ = (clv_seg.groupby("persona")
+                    .agg(so_khach=("customer_unique_id", "nunique"),
+                         pred_90d=("pred_purchases_90d", "mean"),
+                         clv_6m_tb=("clv_6m", "mean"))
+                    .sort_values("clv_6m_tb", ascending=False).round(2)
+                    .reset_index())
+            st.dataframe(summ, hide_index=True, use_container_width=True)
+        top = clv_seg.dropna(subset=["clv_6m"]).sort_values("clv_6m", ascending=False).head(15)
+        top_show = top[["customer_unique_id", "persona", "pred_purchases_90d",
+                        "expected_avg_value", "clv_6m"]].round(2)
+        st.caption("Top 15 khách có CLV 6 tháng cao nhất (chỉ khách mua lặp).")
+        st.dataframe(top_show, hide_index=True, use_container_width=True)
+        best = summ.iloc[0]
+        avg_clv = clv["clv_6m"].mean(skipna=True)
+        note([
+            f"CLV 6 tháng trung bình (khách mua lặp): <b>R$ {avg_clv:,.0f}</b>. Nhóm "
+            f"<b>{best['persona']}</b> dẫn đầu (~<b>R$ {best['clv_6m_tb']:,.0f}</b>/khách) "
+            "— đây là nhóm cần ưu tiên giữ chân.",
+            "Đa số khách Olist mua một lần nên CLV chỉ tính cho ~3% khách mua lặp — "
+            "ngân sách marketing giữ chân nên tập trung vào tệp này để tối ưu ROI.",
+            "<b>pred_purchases_90d</b> là kỳ vọng số đơn trong 90 ngày tới; "
+            "<b>expected_avg_value</b> là giá trị đơn kỳ vọng (Gamma-Gamma); "
+            "<b>clv_6m</b> = CLV 6 tháng đã chiết khấu ~1%/tuần.",
+        ])
+        st.download_button(
+            "⬇️ Tải CLV toàn bộ (CSV)",
+            clv_seg.to_csv(index=False).encode("utf-8-sig"),
+            "customer_clv.csv", "text/csv")
+
     st.download_button("⬇️ Tải RFM (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
                        "rfm_filtered.csv", "text/csv")
 
@@ -682,6 +736,41 @@ def tab_stats(d):
         "quan yếu với điểm đánh giá.",
     ])
 
+    tk_h1 = load_csv("posthoc_tukey_h1")
+    tk_h5 = load_csv("posthoc_tukey_h5")
+    if tk_h1 is not None or tk_h5 is not None:
+        section("Phân tích Tukey HSD (post-hoc)",
+                "Khi ANOVA có ý nghĩa, Tukey HSD so sánh từng cặp nhóm để chỉ ra cặp nào "
+                "thực sự khác biệt (kiểm soát sai lầm loại I).")
+        c1, c2 = st.columns(2)
+        with c1:
+            show_fig("18_tukey_h1", "H1 · Điểm đánh giá theo nhóm sản phẩm")
+            if tk_h1 is not None:
+                st.dataframe(tk_h1, hide_index=True, use_container_width=True, height=260)
+        with c2:
+            show_fig("19_tukey_h5", "H5 · Giá trị đơn theo phương thức thanh toán")
+            if tk_h5 is not None:
+                st.dataframe(tk_h5, hide_index=True, use_container_width=True, height=260)
+
+        def _n_sig(t):
+            if t is None or "reject" not in t.columns:
+                return None
+            return int(t["reject"].astype(str).str.lower().isin(["true", "1"]).sum())
+        n1, n5 = _n_sig(tk_h1), _n_sig(tk_h5)
+        lines = [
+            "Cột <b>reject = True</b> ⇒ cặp đó khác biệt có ý nghĩa (đã hiệu chỉnh); "
+            "<b>meandiff</b> là chênh lệch trung bình giữa 2 nhóm.",
+        ]
+        if n1 is not None:
+            lines.append(f"<b>H1</b> — có <b>{n1}</b> cặp danh mục sản phẩm khác biệt về "
+                         "điểm đánh giá; các cặp này giúp xác định danh mục 'nóng' đang kéo "
+                         "hài lòng xuống.")
+        if n5 is not None:
+            lines.append(f"<b>H5</b> — có <b>{n5}</b> cặp phương thức thanh toán khác biệt về "
+                         "giá trị đơn; <b>credit_card</b> thường vượt <b>boleto/voucher</b> — "
+                         "gợi ý chiến lược khuyến khích trả góp.")
+        note(lines)
+
 
 def tab_cohort(d):
     section("Cohort & Chuỗi thời gian", "Xu hướng theo tháng và tỉ lệ giữ chân khách")
@@ -708,6 +797,39 @@ def tab_cohort(d):
         "→ khách gần như chỉ mua một lần; giữ chân là bài toán trọng tâm.",
         "Gợi ý: email/ưu đãi sau mua lần đầu và chương trình loyalty để kéo cohort quay lại.",
     ])
+
+    fc = d.get("forecast_monthly")
+    if fc is not None:
+        section("Dự báo doanh thu & số đơn 12 tháng tới",
+                "Prophet (nếu có), fallback Holt-Winters — chuỗi tháng đã quan sát.")
+        show_fig("20_forecast_doanhthu_donhang",
+                 "Dự báo doanh thu / số đơn theo tháng (đường đứt = ngưỡng dự báo)")
+        if HAS_PX and {"month", "yhat", "bien"}.issubset(fc.columns):
+            fcc = fc.copy()
+            fcc["month"] = pd.to_datetime(fcc["month"])
+            fcc["Chỉ tiêu"] = fcc["bien"].map(
+                {"doanh_thu": "Doanh thu (R$)", "so_don": "Số đơn"}).fillna(fcc["bien"])
+            fig = px.line(fcc, x="month", y="yhat", color="Chỉ tiêu",
+                          facet_col="Chỉ tiêu", facet_col_wrap=2,
+                          title="Dự báo tương tác — Doanh thu & Số đơn",
+                          labels={"month": "Tháng", "yhat": "Giá trị dự báo"},
+                          color_discrete_sequence=PALETTE)
+            fig.update_yaxes(matches=None, showticklabels=True)
+            for annot in fig.layout.annotations:
+                annot.text = annot.text.split("=")[-1]
+            st.plotly_chart(style_fig(fig, 380), use_container_width=True)
+
+        method = ""
+        if "method" in fc.columns and fc["method"].notna().any():
+            method = ", ".join(sorted(fc["method"].dropna().astype(str).unique()))
+        note([
+            f"Mô hình dùng: <b>{method or 'Prophet / Holt-Winters'}</b>. Chuỗi thời gian huấn "
+            "luyện: 2016-09 đến 2018-10.",
+            "Dự báo cho thấy xu hướng doanh thu & số đơn <b>tiếp tục đi ngang / tăng nhẹ</b> nếu "
+            "không có cú hích marketing — cần phối hợp với chiến dịch giữ chân để bứt phá.",
+            "Tháng cuối chuỗi lịch sử bị thiếu dữ liệu (censoring); vùng dự báo nên đọc thận trọng "
+            "và cập nhật khi có dữ liệu mới.",
+        ])
 
 
 def tab_assoc(d):
@@ -760,16 +882,25 @@ def tab_models(d):
     c1, c2 = st.columns(2)
     with c1:
         show_fig("13_ml_hailong", "ROC & PR — Dự đoán hài lòng")
-        show_fig("14_feature_importance", "Mức ảnh hưởng đặc trưng (SHAP)")
+        show_fig("14_feature_importance", "SHAP — Đặc trưng ảnh hưởng đến hài lòng")
     with c2:
         show_fig("13_ml_mualai", "ROC & PR — Dự đoán mua lại")
-        show_fig("15_dl_duong_hoc", "Deep Learning — đường học")
+        show_fig("21_feature_importance_mualai", "SHAP — Đặc trưng ảnh hưởng đến mua lại")
+    show_fig("15_dl_duong_hoc", "Deep Learning — đường học")
     show_fig("16_so_sanh_mo_hinh", "So sánh ML vs Deep Learning")
+
+    imp_r = load_csv("feature_importance_repurchase")
+    if imp_r is not None:
+        st.caption("Top đặc trưng theo SHAP — mô hình mua lại")
+        st.dataframe(imp_r.head(15), hide_index=True, use_container_width=True)
+
     note([
         "<b>Dự đoán hài lòng</b> đạt PR-AUC cao (~0.85–0.9) — dự báo tốt khách hài lòng "
         "(lớp dương ~78%); yếu tố quan trọng nhất là <b>thời gian giao & giao trễ</b> (xem SHAP).",
         "<b>Dự đoán mua lại</b> rất khó: PR-AUC thấp (~0.02–0.03) do <b>mất cân bằng nặng</b> "
         "(~3% mua lại) và tín hiệu yếu từ đơn đầu — khớp kết luận 'khách mua một lần'.",
+        "SHAP mua lại thường nêu <b>recency, monetary, đánh giá, số danh mục</b> làm top — "
+        "gợi ý các tín hiệu sớm để chấm điểm khách tiềm năng quay lại (dù mô hình còn yếu).",
         "Gradient boosting (LightGBM/XGBoost) và mạng nơ-ron cho kết quả tương đương; với dữ "
         "liệu bảng cỡ này, <b>boosting là lựa chọn hợp lý</b> (nhanh, dễ giải thích bằng SHAP).",
     ])
@@ -873,9 +1004,11 @@ def tab_conclusion(d):
     section("Hạn chế & hướng phát triển")
     note([
         "Dữ liệu một thị trường (Brazil) và một giai đoạn (2016–2018); tỉ lệ mua lại thấp gây "
-        "khó cho mô hình repurchase.",
-        "Hướng phát triển: thêm dữ liệu hành vi duyệt web, mô hình CLV/churn, hệ gợi ý sản phẩm, "
-        "và cập nhật dữ liệu theo thời gian thực.",
+        "khó cho mô hình repurchase và giới hạn cỡ mẫu fit BG/NBD (chỉ ~3% khách mua lặp).",
+        "Dự báo chuỗi thời gian chỉ dựa trên ~24 tháng dữ liệu và tháng cuối bị censoring — "
+        "cần cập nhật khi có dữ liệu mới để tăng độ tin cậy.",
+        "Hướng phát triển: bổ sung hành vi duyệt web, mô hình churn, hệ gợi ý sản phẩm, "
+        "chấm CLV theo thời gian thực và A/B test các đề xuất giữ chân theo phân khúc.",
     ])
 
     st.markdown("---")
@@ -1070,7 +1203,7 @@ SIDEBAR_INFO = """<div class="credit">
 
 
 def main():
-    global FIG_DIR
+    global FIG_DIR, TABLES_DIR
     st.markdown(CSS, unsafe_allow_html=True)
     labels = [n[0] for n in NAV]
 
@@ -1087,6 +1220,7 @@ def main():
     detected = auto_root()
     root = detected if detected else Path("outputs")
     FIG_DIR = root / "figures"
+    TABLES_DIR = root / "tables"
 
     st.markdown(HERO, unsafe_allow_html=True)
 
