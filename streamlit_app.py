@@ -29,7 +29,9 @@ except Exception:
 ARTIFACTS = ["orders_view", "customers_view", "order_lines_view", "rfm_features",
              "stat_results", "customer_segments", "segment_profiles",
              "assoc_rules", "model_metrics",
-             "customer_clv", "forecast_monthly"]
+             "customer_clv", "forecast_monthly",
+             "marketing_funnel", "closed_deals",
+             "funnel_by_origin", "funnel_seller_perf"]
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR: Path | None = None
 TABLES_DIR: Path | None = None
@@ -1154,6 +1156,121 @@ def tab_lookup(d):
             st.dataframe(detail, hide_index=True, use_container_width=True)
 
 
+def tab_funnel(d):
+    section("Phễu tuyển nhà bán (Marketing Funnel by Olist)",
+            "Bộ dữ liệu B2B bổ trợ — theo dõi MQL → closed deal → seller trên platform. "
+            "Khóa nối với dataset chính là seller_id.")
+
+    funnel = d.get("marketing_funnel")
+    deals = d.get("closed_deals")
+    by_origin = d.get("funnel_by_origin")
+    seller_perf = d.get("funnel_seller_perf")
+
+    if funnel is None or deals is None:
+        st.warning(
+            "Chưa có artifact Marketing Funnel. Hãy chạy §11 trong notebook "
+            "`FINAL_Olist_Phan_Tich_v4.ipynb` (Colab) rồi copy `marketing_funnel.parquet`, "
+            "`closed_deals.parquet`, `funnel_by_origin.parquet`, `funnel_seller_perf.parquet` "
+            "cùng các PNG 22–25 vào `app/outputs/`.")
+        return
+
+    # ---- KPI phễu ----
+    total_mql = funnel["mql_id"].nunique()
+    total_deal = int(funnel["is_won"].sum())
+    conv = total_deal / max(total_mql, 1)
+    tt = pd.to_numeric(funnel.loc[funnel["is_won"], "days_to_close"],
+                       errors="coerce").dropna()
+    tt_med = tt.median() if len(tt) else float("nan")
+
+    cols = st.columns(4)
+    kpi(cols[0], "", "Tổng MQL", fmt_int(total_mql), "#2C8C99")
+    kpi(cols[1], "", "Closed deals", fmt_int(total_deal), "#EF5B4C")
+    kpi(cols[2], "", "Tỉ lệ chuyển đổi", f"{conv:.1%}", "#2FA36B")
+    kpi(cols[3], "", "Time-to-close (median)", f"{tt_med:.0f} ngày", "#E0A73E")
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+    show_fig("22_funnel_theothoigian",
+             "MQL và closed deals theo tháng, kèm tỉ lệ chuyển đổi")
+
+    # ---- Origin ----
+    section("Hiệu quả kênh (origin)")
+    show_fig("23_funnel_theokenh", "Số MQL và tỉ lệ chuyển đổi theo kênh")
+    if by_origin is not None:
+        show_cols = [c for c in ["origin", "n_mql", "n_deal", "conv_rate"] if c in by_origin.columns]
+        tbl = by_origin[show_cols].copy()
+        if "conv_rate" in tbl.columns:
+            tbl["conv_rate"] = tbl["conv_rate"].map(lambda x: f"{float(x):.1%}")
+        st.dataframe(tbl, hide_index=True, use_container_width=True)
+
+    if by_origin is not None and "conv_rate" in by_origin.columns:
+        best = by_origin.sort_values("conv_rate", ascending=False).iloc[0]
+        worst = by_origin.sort_values("conv_rate").iloc[0]
+        note([
+            f"Kênh <b>{best['origin']}</b> có tỉ lệ chuyển đổi cao nhất "
+            f"(<b>{float(best['conv_rate']):.1%}</b>) — ưu tiên tăng ngân sách.",
+            f"Kênh <b>{worst['origin']}</b> hiệu quả thấp nhất "
+            f"(<b>{float(worst['conv_rate']):.1%}</b>) — xem xét tối ưu creatives hoặc "
+            "cắt giảm.",
+            "Chi-square kiểm định trong notebook cho thấy sự khác biệt giữa các kênh có "
+            "ý nghĩa thống kê — <b>lựa chọn kênh không chỉ là ngẫu nhiên</b>.",
+        ])
+
+    # ---- Business segment ----
+    section("Phân khúc kinh doanh của closed deals")
+    show_fig("24_funnel_phankhuc",
+             "Top phân khúc kinh doanh, loại lead và hành vi lead")
+
+    if HAS_PX and "business_segment" in deals.columns:
+        top_seg = (deals["business_segment"].value_counts().head(10)
+                   .rename_axis("business_segment").reset_index(name="n"))
+        fig = px.bar(top_seg.sort_values("n"), x="n", y="business_segment",
+                     orientation="h", title="Top 10 phân khúc kinh doanh (closed deals)",
+                     color="business_segment", color_discrete_sequence=PALETTE)
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(style_fig(fig), use_container_width=True)
+
+    # ---- Seller performance post-conversion ----
+    section("Chất lượng seller sau chuyển đổi",
+            "So sánh seller từ Marketing Funnel với seller không thuộc phễu, "
+            "và chất lượng seller phân theo kênh MQL.")
+    show_fig("25_funnel_seller_by_origin",
+             "Đánh giá TB và doanh thu median của seller theo kênh MQL")
+
+    if seller_perf is not None and len(seller_perf):
+        c1, c2, c3, c4 = st.columns(4)
+        kpi(c1, "", "Số seller từ phễu", fmt_int(seller_perf["seller_id"].nunique()), "#7C5CFC")
+        kpi(c2, "", "Đánh giá TB", f"{seller_perf['avg_review'].mean():.2f} / 5", "#2FA36B")
+        kpi(c3, "", "Giao hàng TB (ngày)",
+            f"{seller_perf['avg_delivery'].mean():.1f}", "#2C8C99")
+        kpi(c4, "", "Tỉ lệ trễ TB", f"{seller_perf['late_rate'].mean():.1%}", "#EF5B4C")
+
+        if "origin" in seller_perf.columns:
+            agg = (seller_perf.groupby("origin")
+                   .agg(n_seller=("seller_id", "nunique"),
+                        avg_review=("avg_review", "mean"),
+                        median_revenue=("revenue", "median"),
+                        avg_delivery=("avg_delivery", "mean"),
+                        late_rate=("late_rate", "mean"))
+                   .round(2).sort_values("n_seller", ascending=False).reset_index())
+            st.caption("Chất lượng seller theo kênh MQL")
+            st.dataframe(agg, hide_index=True, use_container_width=True)
+
+    comp = load_csv("funnel_seller_comparison")
+    if comp is not None:
+        st.caption("So sánh seller từ Marketing Funnel vs seller không thuộc phễu")
+        st.dataframe(comp, use_container_width=True)
+
+    note([
+        "Kênh có <b>tỉ lệ chuyển đổi cao</b> chưa chắc cho <b>seller chất lượng cao</b> — "
+        "so sánh cả hai chiều giúp chọn kênh có ROI dài hạn tốt nhất.",
+        "Seller từ Marketing Funnel (được đội sales tuyển chọn) thường có <b>đánh giá và "
+        "tỉ lệ trễ tốt hơn</b> so với seller đến từ kênh khác — bằng chứng cho giá trị "
+        "của quy trình MQL–deal.",
+        "Đây là bằng chứng đầu-cuối: đầu tư marketing B2B ảnh hưởng trực tiếp tới trải "
+        "nghiệm khách hàng cuối (delivery, review) — cần đo lường xuyên suốt phễu.",
+    ])
+
+
 # --------------------------------------------------------------------------- #
 NAV = [("00 · Giới thiệu", "info-circle-fill", tab_intro),
        ("01 · Tổng quan", "bar-chart-fill", tab_overview),
@@ -1164,7 +1281,8 @@ NAV = [("00 · Giới thiệu", "info-circle-fill", tab_intro),
        ("06 · Luật kết hợp", "link-45deg", tab_assoc),
        ("07 · Mô hình", "cpu-fill", tab_models),
        ("08 · Tra cứu KH", "search", tab_lookup),
-       ("09 · Kết luận", "clipboard-check-fill", tab_conclusion)]
+       ("09 · Phễu Marketing", "funnel-fill", tab_funnel),
+       ("10 · Kết luận", "clipboard-check-fill", tab_conclusion)]
 
 MENU_STYLES = {
     "container": {"padding": "4px 0", "background-color": "#0E6E63"},
