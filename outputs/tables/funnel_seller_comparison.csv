@@ -1,0 +1,3 @@
+﻿from_funnel,n_sellers,avg_n_orders,median_revenue,avg_review,avg_delivery,late_rate
+False,2715,35.17,1390.47,3.93,12.64,0.06
+True,380,11.89,815.0,4.27,8.89,0.04

@@ -1,0 +1,10 @@
+﻿origin,n_sellers,total_orders,median_revenue,avg_review,avg_delivery,late_rate
+organic_search,113,1208,905.55,4.26,8.57,0.04
+paid_search,101,1247,712.44,4.24,9.26,0.03
+unknown,81,1280,882.87,4.3,9.26,0.07
+direct_traffic,31,193,752.51,4.24,8.93,0.03
+social,31,392,1061.3,4.29,7.94,0.05
+referral,9,69,1606.63,4.34,9.36,0.0
+email,6,22,486.3,4.57,10.57,0.02
+other,2,89,5202.7,3.98,8.04,0.13
+display,2,7,603.98,4.25,8.63,0.0
