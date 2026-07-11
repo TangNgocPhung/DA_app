@@ -1,5 +1,5 @@
-streamlit
-pandas
-plotly
-pyarrow
-streamlit-option-menu
+streamlit>=1.44,<1.50
+pandas>=2.1,<2.3
+plotly>=5.20,<6.0
+pyarrow>=14.0,<17.0
+streamlit-option-menu==0.3.13

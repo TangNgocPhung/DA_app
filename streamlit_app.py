@@ -272,7 +272,7 @@ def kpi_rich(col, label, value, tint, series=None, delta=None):
                     f'{badge}</div><div class="lab">{label}</div></div>',
                     unsafe_allow_html=True)
         if series is not None and HAS_PX and len(list(series)) > 1:
-            st.plotly_chart(_spark(series, tint), use_container_width=True,
+            st.plotly_chart(_spark(series, tint), width="stretch",
                             config={"displayModeBar": False})
 
 
@@ -292,7 +292,7 @@ def style_fig(fig, h=360):
 def show_fig(name, caption=""):
     p = (FIG_DIR / f"{name}.png") if FIG_DIR else None
     if p and p.exists():
-        st.image(str(p), caption=caption, use_container_width=True)
+        st.image(str(p), caption=caption, width="stretch")
     else:
         st.caption(f"— (chưa có biểu đồ {name})")
 
@@ -384,7 +384,7 @@ def tab_intro(d):
             fig.update_xaxes(type="log")
             fig.update_traces(textposition="outside", cliponaxis=False)
             fig.update_layout(showlegend=False)
-            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+            st.plotly_chart(style_fig(fig, 300), width="stretch")
         with r1c2:
             rv = ov["review_score"].dropna().astype(int).value_counts().sort_index().reset_index()
             rv.columns = ["Điểm", "Số lượng"]
@@ -394,7 +394,7 @@ def tab_intro(d):
                              "1": "#EF4444", "2": "#F97316", "3": "#F59E0B",
                              "4": "#34D399", "5": "#059669"})
             fig.update_layout(showlegend=False)
-            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+            st.plotly_chart(style_fig(fig, 300), width="stretch")
         r2c1, r2c2 = st.columns(2)
         with r2c1:
             pt = ov["payment_type_primary"].value_counts().reset_index()
@@ -403,7 +403,7 @@ def tab_intro(d):
                          title="Phương thức thanh toán", color="Phương thức",
                          color_discrete_sequence=PALETTE)
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
-            st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+            st.plotly_chart(style_fig(fig, 300), width="stretch")
         with r2c2:
             if ol is not None:
                 tc = ol["category"].value_counts().head(10).reset_index()
@@ -412,7 +412,7 @@ def tab_intro(d):
                              orientation="h", title="Top 10 danh mục sản phẩm",
                              color="Danh mục", color_discrete_sequence=PALETTE)
                 fig.update_layout(showlegend=False)
-                st.plotly_chart(style_fig(fig, 300), use_container_width=True)
+                st.plotly_chart(style_fig(fig, 300), width="stretch")
 
     section("Cấu trúc 9 bảng dữ liệu")
     tables = pd.DataFrame([
@@ -426,7 +426,7 @@ def tab_intro(d):
         ("olist_geolocation_dataset", "Tọa độ địa lý", "vĩ độ/kinh độ theo tiền tố mã bưu chính"),
         ("product_category_name_translation", "Dịch danh mục", "tên danh mục: Bồ Đào Nha → tiếng Anh"),
     ], columns=["Bảng (CSV)", "Nội dung", "Cột chính"])
-    st.dataframe(tables, hide_index=True, use_container_width=True)
+    st.dataframe(tables, hide_index=True, width="stretch")
 
     section("Phương pháp & thuật toán phân tích",
             "Quy trình xử lý và kỹ thuật áp dụng cho từng bước")
@@ -446,7 +446,7 @@ def tab_intro(d):
         ("9. Dự báo chuỗi thời gian", "Dự báo doanh thu & số đơn 12 tháng — **Prophet** (fallback Holt-Winters)", "prophet, statsmodels"),
         ("10. Trực quan hóa", "Dashboard tương tác trình bày toàn bộ kết quả", "streamlit, plotly"),
     ], columns=["Bước", "Kỹ thuật / Thuật toán", "Thư viện"])
-    st.dataframe(methods, hide_index=True, use_container_width=True)
+    st.dataframe(methods, hide_index=True, width="stretch")
 
     prof = d.get("segment_profiles")
     if HAS_PX and prof is not None and \
@@ -480,7 +480,7 @@ def tab_intro(d):
                           legend=dict(orientation="v", yanchor="middle", y=0.5,
                                       xanchor="left", x=1.03, font=dict(size=11),
                                       title_text=""))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def tab_overview(d):
@@ -516,7 +516,7 @@ def tab_overview(d):
                           title="Doanh thu theo tháng",
                           labels={"month": "Tháng", "doanh_thu": "Doanh thu (R$)"})
             fig.update_traces(line_color="#0EA5E9", fillcolor="rgba(14,165,233,.14)")
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
     with c2:
         top = (deliv.groupby("customer_state")["order_value"].sum()
                .sort_values(ascending=False).head(8).reset_index())
@@ -526,7 +526,7 @@ def tab_overview(d):
                          title="Top bang theo doanh thu", color="Bang",
                          color_discrete_sequence=PALETTE)
             fig.update_layout(showlegend=False, yaxis=dict(autorange="reversed"))
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
 
     tot = deliv["order_value"].sum()
     bs = deliv.groupby("customer_state")["order_value"].sum().sort_values(ascending=False)
@@ -569,7 +569,7 @@ def tab_rfm(d):
                          orientation="h", title="Số khách theo phân khúc RFM",
                          color="Phân khúc", color_discrete_sequence=PALETTE)
             fig.update_layout(showlegend=False)
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
     with c2:
         if HAS_PX and "monetary" in df.columns:
             fig = px.scatter(df.sample(min(4000, len(df)), random_state=42),
@@ -580,7 +580,7 @@ def tab_rfm(d):
                                      "monetary": "Monetary – tổng chi tiêu (R$)",
                                      "rfm_segment": "Phân khúc"})
             fig.update_yaxes(type="log")
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
 
     note([
         "<b>Biểu đồ trái</b> (số khách theo phân khúc): phần lớn khách rơi vào "
@@ -599,12 +599,12 @@ def tab_rfm(d):
              "At Risk", "Hibernating", "Lost"]
     gloss = pd.DataFrame([(s, SEGMENT_DESC[s]) for s in order],
                          columns=["Phân khúc", "Ý nghĩa & gợi ý hành động"])
-    st.dataframe(gloss, hide_index=True, use_container_width=True)
+    st.dataframe(gloss, hide_index=True, width="stretch")
 
     if prof is not None:
         section("Chân dung phân khúc (K-Means)",
                 "Phân cụm khách theo đặc trưng RFM; mỗi cụm là một 'chân dung'")
-        st.dataframe(prof, use_container_width=True, hide_index=True)
+        st.dataframe(prof, width="stretch", hide_index=True)
         if HAS_PX:
             pf = prof.copy()
             pf["Cụm"] = "Cụm " + pf["cluster"].astype(str)
@@ -614,7 +614,7 @@ def tab_rfm(d):
                              labels={"recency": "Recency TB (ngày)",
                                      "monetary": "Chi tiêu TB (R$)"})
             fig.update_traces(textposition="top center")
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
         big = prof.loc[prof["n"].idxmax()]
         vip = prof.loc[prof["monetary"].idxmax()]
         low = prof.loc[prof["review"].idxmin()]
@@ -645,12 +645,12 @@ def tab_rfm(d):
                          clv_6m_tb=("clv_6m", "mean"))
                     .sort_values("clv_6m_tb", ascending=False).round(2)
                     .reset_index())
-            st.dataframe(summ, hide_index=True, use_container_width=True)
+            st.dataframe(summ, hide_index=True, width="stretch")
         top = clv_seg.dropna(subset=["clv_6m"]).sort_values("clv_6m", ascending=False).head(15)
         top_show = top[["customer_unique_id", "persona", "pred_purchases_90d",
                         "expected_avg_value", "clv_6m"]].round(2)
         st.caption("Top 15 khách có CLV 6 tháng cao nhất (chỉ khách mua lặp).")
-        st.dataframe(top_show, hide_index=True, use_container_width=True)
+        st.dataframe(top_show, hide_index=True, width="stretch")
         best = summ.iloc[0]
         avg_clv = clv["clv_6m"].mean(skipna=True)
         note([
@@ -692,7 +692,7 @@ def tab_stats(d):
     for c in ["es_param", "es_nonparam"]:
         if c in disp:
             disp[c] = pd.to_numeric(disp[c], errors="coerce").round(3)
-    st.dataframe(disp, use_container_width=True, hide_index=True)
+    st.dataframe(disp, width="stretch", hide_index=True)
     st.markdown('<span class="small-note">p_holm &lt; 0.05 ⇒ có ý nghĩa thống kê. '
                 'effect size cho biết độ mạnh mối liên hệ (không phụ thuộc cỡ mẫu).</span>',
                 unsafe_allow_html=True)
@@ -711,7 +711,7 @@ def tab_stats(d):
                      labels={"effect": "Effect size (|giá trị|)", "id": "Giả thuyết"})
         fig.update_traces(texttemplate="%{text:.3f}", textposition="outside", cliponaxis=False)
         fig.update_layout(showlegend=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
 
     n_sig = int((pd.to_numeric(sr["p_holm"], errors="coerce") < 0.05).sum())
     strong = eff.loc[eff["effect"].idxmax()]
@@ -748,11 +748,11 @@ def tab_stats(d):
         with c1:
             show_fig("18_tukey_h1", "H1 · Điểm đánh giá theo nhóm sản phẩm")
             if tk_h1 is not None:
-                st.dataframe(tk_h1, hide_index=True, use_container_width=True, height=260)
+                st.dataframe(tk_h1, hide_index=True, width="stretch", height=260)
         with c2:
             show_fig("19_tukey_h5", "H5 · Giá trị đơn theo phương thức thanh toán")
             if tk_h5 is not None:
-                st.dataframe(tk_h5, hide_index=True, use_container_width=True, height=260)
+                st.dataframe(tk_h5, hide_index=True, width="stretch", height=260)
 
         def _n_sig(t):
             if t is None or "reject" not in t.columns:
@@ -786,7 +786,7 @@ def tab_cohort(d):
                      labels={"month": "Tháng", "so_don": "Số đơn"},
                      color="so_don", color_continuous_scale=["#FBD9D2", "#EF5B4C"])
         fig.update_layout(coloraxis_showscale=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
     c1, c2 = st.columns(2)
     with c1:
         show_fig("02_xu_huong_thang", "Số đơn & doanh thu theo tháng")
@@ -819,7 +819,7 @@ def tab_cohort(d):
             fig.update_yaxes(matches=None, showticklabels=True)
             for annot in fig.layout.annotations:
                 annot.text = annot.text.split("=")[-1]
-            st.plotly_chart(style_fig(fig, 380), use_container_width=True)
+            st.plotly_chart(style_fig(fig, 380), width="stretch")
 
         method = ""
         if "method" in fc.columns and fc["method"].notna().any():
@@ -849,13 +849,13 @@ def tab_assoc(d):
     lift = c[0].slider("Lift tối thiểu", 1.0, float(max(2.0, ar["lift"].max())), 1.0, 0.1)
     conf = c[1].slider("Confidence tối thiểu", 0.0, 1.0, 0.0, 0.05)
     f = ar[(ar["lift"] >= lift) & (ar["confidence"] >= conf)].sort_values("lift", ascending=False)
-    st.dataframe(f, use_container_width=True, hide_index=True)
+    st.dataframe(f, width="stretch", hide_index=True)
     if HAS_PX and len(f):
         fig = px.scatter(f, x="support", y="confidence", size="lift", color="lift",
                          hover_data=["antecedents", "consequents"],
                          title="Support – Confidence – Lift",
                          color_continuous_scale=["#D1FAE5", PRIMARY])
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
     lines = [
         f"Tìm được <b>{len(ar)}</b> luật có lift &gt; 1 — số lượng ít, đúng đặc thù giỏ hàng "
         "Olist rất thưa.",
@@ -873,14 +873,14 @@ def tab_models(d):
     mm = d["model_metrics"]
     section("Mô hình dự đoán", "Machine Learning (4 mô hình) + Deep Learning; nhấn PR-AUC")
     if mm is not None:
-        st.dataframe(mm, use_container_width=True, hide_index=True)
+        st.dataframe(mm, width="stretch", hide_index=True)
         if HAS_PX and {"level_0", "level_1", "PR_AUC"}.issubset(mm.columns):
             fig = px.bar(mm, x="level_1", y="PR_AUC", color="level_0", barmode="group",
                          title="PR-AUC theo mô hình & bài toán",
                          color_discrete_sequence=PALETTE,
                          labels={"level_1": "Mô hình", "PR_AUC": "PR-AUC",
                                  "level_0": "Bài toán"})
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
     c1, c2 = st.columns(2)
     with c1:
         show_fig("13_ml_hailong", "ROC & PR — Dự đoán hài lòng")
@@ -894,7 +894,7 @@ def tab_models(d):
     imp_r = load_csv("feature_importance_repurchase")
     if imp_r is not None:
         st.caption("Top đặc trưng theo SHAP — mô hình mua lại")
-        st.dataframe(imp_r.head(15), hide_index=True, use_container_width=True)
+        st.dataframe(imp_r.head(15), hide_index=True, width="stretch")
 
     note([
         "<b>Dự đoán hài lòng</b> đạt PR-AUC cao (~0.85–0.9) — dự báo tốt khách hài lòng "
@@ -936,7 +936,7 @@ def tab_geo(d):
                 title="Điểm đánh giá trung bình theo bang",
                 labels={"danh_gia": "Đánh giá TB"})
             fig.update_geos(fitbounds="locations", visible=False, bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(style_fig(fig, 500), use_container_width=True)
+            st.plotly_chart(style_fig(fig, 500), width="stretch")
             used = True
         except Exception:
             used = False
@@ -952,11 +952,11 @@ def tab_geo(d):
         fig.update_geos(scope="south america", showcountries=True,
                         landcolor="#EFE7D5", bgcolor="rgba(0,0,0,0)",
                         fitbounds="locations")
-        st.plotly_chart(style_fig(fig, 480), use_container_width=True)
+        st.plotly_chart(style_fig(fig, 480), width="stretch")
 
     tbl = g[["Bang", "doanh_thu", "so_don", "danh_gia"]].sort_values(
         "doanh_thu", ascending=False).round({"danh_gia": 2})
-    st.dataframe(tbl, hide_index=True, use_container_width=True)
+    st.dataframe(tbl, hide_index=True, width="stretch")
     tot = g["doanh_thu"].sum()
     note([
         f"<b>{g.sort_values('doanh_thu', ascending=False).iloc[0]['Bang']}</b> đóng góp lớn "
@@ -991,7 +991,7 @@ def tab_conclusion(d):
         ("At Risk / Hibernating", "Chiến dịch win-back: voucher, nhắc nhở, sản phẩm phù hợp."),
         ("Lost", "Kích hoạt lại có chọn lọc (chi phí thấp) hoặc chấp nhận rời bỏ."),
     ], columns=["Phân khúc", "Đề xuất hành động"])
-    st.dataframe(rec, hide_index=True, use_container_width=True)
+    st.dataframe(rec, hide_index=True, width="stretch")
 
     section("Khuyến nghị vận hành & kinh doanh")
     note([
@@ -1015,7 +1015,7 @@ def tab_conclusion(d):
 
     st.markdown("---")
     st.download_button("📄 Tải báo cáo tóm tắt (HTML)", build_report_html(d),
-                       "bao_cao_olist.html", "text/html", use_container_width=False)
+                       "bao_cao_olist.html", "text/html", width="content")
 
 
 def build_report_html(d):
@@ -1075,7 +1075,7 @@ def tab_lookup(d):
     sample = pool.sort_values("monetary", ascending=False).head(15)[cols_show]
     st.caption(f"{len(pool):,} khách trong nhóm — 15 khách chi tiêu cao nhất "
                "(cột **customer_unique_id** là mã cần dùng):")
-    st.dataframe(sample, hide_index=True, use_container_width=True)
+    st.dataframe(sample, hide_index=True, width="stretch")
 
     if HAS_PX and len(pool):
         samp = pool.sample(min(3000, len(pool)), random_state=42)
@@ -1086,7 +1086,7 @@ def tab_lookup(d):
                          labels={"recency_days": "Recency (ngày)", "monetary": "Chi tiêu (R$)",
                                  "avg_review_score": "Đánh giá"})
         fig.update_yaxes(type="log")
-        st.plotly_chart(style_fig(fig, 320), use_container_width=True)
+        st.plotly_chart(style_fig(fig, 320), width="stretch")
 
     nhom = "toàn bộ khách" if pick_seg == "(Tất cả)" else f"nhóm '{pick_seg}'"
     freq_tb = float(pool["frequency"].mean())
@@ -1108,7 +1108,7 @@ def tab_lookup(d):
     chosen = c1.selectbox("Bước 2 — chọn mã khách", ids) if ids else ""
     with c2:
         st.markdown("<div style='height:1.72rem'></div>", unsafe_allow_html=True)
-        rnd = st.button("🎲 Ngẫu nhiên", use_container_width=True)
+        rnd = st.button("🎲 Ngẫu nhiên", width="stretch")
     manual = c3.text_input("… hoặc dán mã khác", "")
     if rnd and len(pool):
         ss["lookup_cid"] = str(pool["customer_unique_id"].sample(1).iloc[0])
@@ -1153,7 +1153,7 @@ def tab_lookup(d):
             note(lines)
             detail = row.T.reset_index()
             detail.columns = ["Đặc trưng", "Giá trị"]
-            st.dataframe(detail, hide_index=True, use_container_width=True)
+            st.dataframe(detail, hide_index=True, width="stretch")
 
 
 def tab_funnel(d):
@@ -1200,7 +1200,7 @@ def tab_funnel(d):
         tbl = by_origin[show_cols].copy()
         if "conv_rate" in tbl.columns:
             tbl["conv_rate"] = tbl["conv_rate"].map(lambda x: f"{float(x):.1%}")
-        st.dataframe(tbl, hide_index=True, use_container_width=True)
+        st.dataframe(tbl, hide_index=True, width="stretch")
 
     if by_origin is not None and "conv_rate" in by_origin.columns:
         best = by_origin.sort_values("conv_rate", ascending=False).iloc[0]
@@ -1227,7 +1227,7 @@ def tab_funnel(d):
                      orientation="h", title="Top 10 phân khúc kinh doanh (closed deals)",
                      color="business_segment", color_discrete_sequence=PALETTE)
         fig.update_layout(showlegend=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
 
     # ---- Seller performance post-conversion ----
     section("Chất lượng seller sau chuyển đổi",
@@ -1253,12 +1253,12 @@ def tab_funnel(d):
                         late_rate=("late_rate", "mean"))
                    .round(2).sort_values("n_seller", ascending=False).reset_index())
             st.caption("Chất lượng seller theo kênh MQL")
-            st.dataframe(agg, hide_index=True, use_container_width=True)
+            st.dataframe(agg, hide_index=True, width="stretch")
 
     comp = load_csv("funnel_seller_comparison")
     if comp is not None:
         st.caption("So sánh seller từ Marketing Funnel vs seller không thuộc phễu")
-        st.dataframe(comp, use_container_width=True)
+        st.dataframe(comp, width="stretch")
 
     note([
         "Kênh có <b>tỉ lệ chuyển đổi cao</b> chưa chắc cho <b>seller chất lượng cao</b> — "
